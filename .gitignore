@@ -36,3 +36,12 @@ lingo-daily-*.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Android app build output and the private signing key
+/android/keystore/
+/android/dist/
+/android/.gradle/
+/android/build/
+/android/app/build/
+/android/local.properties
+/web/downloads/

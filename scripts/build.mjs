@@ -31,8 +31,9 @@ const TYPES = {
   ".webmanifest": "application/manifest+json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  ".apk": "application/vnd.android.package-archive",
 };
-const BINARY = new Set([".png"]);
+const BINARY = new Set([".png", ".apk"]);
 async function walk(dir) {
   let out = [];
   for (const e of await readdir(new URL(dir, root), { withFileTypes: true })) {

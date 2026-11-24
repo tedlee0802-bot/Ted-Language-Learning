@@ -1,0 +1,58 @@
+// Lingo Daily for Android: a Trusted Web Activity that opens the deployed site full screen.
+// Build with android/build-apk.sh https://<site>, which passes the host and signing settings.
+plugins {
+    id "com.android.application"
+}
+
+def twaHost = (project.findProperty("twaHost") ?: "lingo-daily.example").toString()
+def launchUrl = "https://${twaHost}/"
+def assetStatements = '[{ \\"relation\\": [\\"delegate_permission/common.handle_all_urls\\"], ' +
+        '\\"target\\": {\\"namespace\\": \\"web\\", \\"site\\": \\"https://' + twaHost + '\\"}}]'
+
+android {
+    namespace "app.lingodaily.family"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "app.lingodaily.family"
+        minSdk 24
+        targetSdk 35
+        versionCode((project.findProperty("versionCode") ?: "1").toString().toInteger())
+        versionName((project.findProperty("versionName") ?: "1.0").toString())
+
+        resValue "string", "appName", "Lingo Daily"
+        resValue "string", "launcherName", "Lingo Daily"
+        resValue "string", "hostName", twaHost
+        resValue "string", "launchUrl", launchUrl
+        resValue "string", "assetStatements", assetStatements
+        resValue "string", "providerAuthority", "app.lingodaily.family.fileprovider"
+    }
+
+    signingConfigs {
+        release {
+            def store = System.getenv("LD_KEYSTORE")
+            if (store) {
+                storeFile file(store)
+                storePassword System.getenv("LD_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("LD_KEY_ALIAS")
+                keyPassword System.getenv("LD_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.5.0"
+}

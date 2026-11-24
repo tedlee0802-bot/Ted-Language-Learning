@@ -70,6 +70,8 @@ node --test tests/homework.test.mjs tests/family.test.mjs tests/levels.test.mjs
 - iPhone·iPad: Safari로 사이트 열기 → 공유 버튼 → 홈 화면에 추가
 - Android: Chrome으로 사이트 열기 → ⋮ 메뉴 → 앱 설치(또는 홈 화면에 추가)
 
+**Android APK**: `android/build-apk.sh https://<사이트 주소>`로 안드로이드 앱 파일을 만들 수 있습니다. 빌드한 뒤 사이트를 다시 배포하면 `/install` 페이지에 'Android 앱(APK) 받기' 버튼이 나타납니다. 서명 키 보관 방법 등은 `android/README.md`를 보세요.
+
 설치에는 HTTPS 주소가 필요합니다(Sites 주소는 HTTPS입니다). 앱 화면은 오프라인에서도 열리지만, 수업·시험·기록은 항상 서버에서 받아오므로 인터넷이 필요합니다. 사이트를 다시 배포하면 설치된 앱도 다음 실행 때 새 버전으로 바뀝니다.
 
 ## 파일 구성
@@ -82,6 +84,7 @@ node --test tests/homework.test.mjs tests/family.test.mjs tests/levels.test.mjs
 | `worker/levels-data.mjs` | 첫 주 중급·고급 단어·숙어와 레벨 테스트 단어 |
 | `scripts/` | Worker 빌드와 로컬 미리보기 |
 | `tests/` | Node.js 내장 테스트 (`homework`, `family`) |
+| `android/` | 안드로이드 앱(APK) 프로젝트와 빌드 스크립트 |
 | `design-concepts/` | 리디자인 레퍼런스, Codex 시안 이미지와 프롬프트 |
 | `.openai/hosting.example.json` | 실제 프로젝트 ID를 제외한 Sites 설정 예시 |
 | `COACH_OPERATIONS.md` | 개인 사이트의 수업 운영 방식 |
