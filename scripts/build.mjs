@@ -40,7 +40,11 @@ for (const p of files) {
   const buf = await readFile(new URL(p, root)),
     e = ext(p);
   hash.update(p).update(buf);
-  assets[p.slice(3)] = { type: TYPES[e], body: BINARY.has(e) ? buf.toString("base64") : buf.toString("utf8"), b64: BINARY.has(e) };
+  assets[p.slice(3)] = {
+    type: TYPES[e],
+    body: BINARY.has(e) ? buf.toString("base64") : buf.toString("utf8"),
+    b64: BINARY.has(e),
+  };
 }
 // The service worker cache name changes whenever any asset changes, so installed apps update.
 const version = hash.digest("hex").slice(0, 12);

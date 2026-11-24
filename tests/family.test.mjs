@@ -30,7 +30,10 @@ async function req(e, path, { body, cookie, headers = {}, time = "2026-10-20T19:
   if (body) h["Content-Type"] = "application/json";
   if (cookie) h.Cookie = cookie;
   const r = await api(
-    new Request("https://family.test" + path, body ? { method: "POST", headers: h, body: JSON.stringify(body) } : { headers: h }),
+    new Request(
+      "https://family.test" + path,
+      body ? { method: "POST", headers: h, body: JSON.stringify(body) } : { headers: h },
+    ),
     e,
     now(time),
   );
@@ -54,7 +57,13 @@ async function answerAll(e, cookie, date, mode) {
   assert.equal(q.status, 200, JSON.stringify(q.data));
   return req(e, "/api/quiz/submit", {
     cookie,
-    body: { date, lang: "en", mode, format: "choice", answers: q.data.items.map((i) => ({ id: i.id, answer: i.meaning })) },
+    body: {
+      date,
+      lang: "en",
+      mode,
+      format: "choice",
+      answers: q.data.items.map((i) => ({ id: i.id, answer: i.meaning })),
+    },
   });
 }
 
@@ -86,7 +95,9 @@ test("owner keeps the original top-level records; family records are separate", 
   assert.equal(kidHome.data.reviewRequired, true);
   assert.equal(kidHome.data.lesson, null);
   assert.equal(kidHome.data.stats.attempts, 0);
-  await assert.rejects(() => quizItems(e, "2026-10-20", "en", "evening", now("2026-10-20T19:01:00"), `users/${kidId}/`));
+  await assert.rejects(() =>
+    quizItems(e, "2026-10-20", "en", "evening", now("2026-10-20T19:01:00"), `users/${kidId}/`),
+  );
   assert.equal((await answerAll(e, kid, "2026-10-20", "review")).status, 200);
   assert.ok(e.BUCKET.store.has(`users/${kidId}/progress/en.json`));
   const after = await req(e, "/api/homework?date=2026-10-20&lang=en", { cookie: kid });
