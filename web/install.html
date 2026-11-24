@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Lingo Daily 앱 설치</title>
+    <meta name="description" content="가족이 함께 쓰는 영어·중국어 단어 공부 앱 Lingo Daily를 휴대폰에 설치하세요." />
+    <meta name="theme-color" content="#FAF8F4" />
+    <meta property="og:title" content="Lingo Daily 앱 설치" />
+    <meta property="og:description" content="눌러서 휴대폰 홈 화면에 Lingo Daily를 설치하세요." />
+    <meta property="og:image" content="icons/icon-512.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lingo Daily" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .install {
+        width: min(520px, 100%);
+        margin: 0 auto;
+        padding: calc(32px + env(safe-area-inset-top)) 16px 40px;
+        display: grid;
+        gap: 18px;
+      }
+      .install-head {
+        text-align: center;
+        display: grid;
+        justify-items: center;
+        gap: 6px;
+      }
+      .install-head img {
+        width: 96px;
+        height: 96px;
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+      }
+      .install-head h1 {
+        font-size: 30px;
+        font-weight: 800;
+        margin-top: 8px;
+      }
+      .install-head p {
+        color: var(--ink-2);
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px;
+      }
+      .card h2 {
+        font-size: 18px;
+        margin-bottom: 8px;
+      }
+      .card.now {
+        border: 2px solid var(--accent);
+      }
+      .card .badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 2px 9px;
+        border-radius: 99px;
+        background: var(--accent);
+        color: #fff;
+        font-size: 12px;
+        vertical-align: 2px;
+      }
+      .big {
+        width: 100%;
+        min-height: 54px;
+        border-radius: 14px;
+        font-size: 17px;
+      }
+      .note {
+        background: var(--warn-soft);
+        color: var(--warn-ink);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+      .qr {
+        display: grid;
+        justify-items: center;
+        gap: 10px;
+        text-align: center;
+      }
+      .qr svg {
+        width: 220px;
+        height: 220px;
+      }
+      .url {
+        display: block;
+        padding: 10px 12px;
+        background: var(--surface-2);
+        border-radius: 10px;
+        word-break: break-all;
+        font-size: 14px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+      .open {
+        text-align: center;
+        color: var(--ink-2);
+      }
+      .open a {
+        color: var(--accent-strong);
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="install" style="margin: 0 auto; max-width: none">
+      <header class="install-head">
+        <img src="icons/icon-192.png" alt="" width="96" height="96" />
+        <h1>Lingo Daily</h1>
+        <p>가족이 함께 쓰는 영어·중국어 단어 공부 앱</p>
+      </header>
+
+      <p class="note" id="inapp" hidden></p>
+      <section class="card now" id="done" hidden>
+        <h2>✓ 이미 앱으로 실행 중입니다</h2>
+        <p class="sub">홈 화면의 Lingo Daily 아이콘으로 열면 됩니다.</p>
+      </section>
+      <section class="card" id="prompt" hidden>
+        <h2>이 기기에 바로 설치</h2>
+        <button class="primary big" id="installBtn" type="button">앱 설치하기</button>
+      </section>
+
+      <section class="card" id="ios">
+        <h2>iPhone · iPad</h2>
+        <ol class="install-steps">
+          <li><b>Safari</b>로 이 페이지를 엽니다.</li>
+          <li>아래쪽 <b>공유 버튼(□↑)</b>을 누릅니다.</li>
+          <li><b>'홈 화면에 추가'</b> → <b>'추가'</b>를 누릅니다.</li>
+        </ol>
+      </section>
+      <section class="card" id="android">
+        <h2>Android</h2>
+        <ol class="install-steps">
+          <li><b>Chrome</b>(또는 삼성 인터넷)으로 이 페이지를 엽니다.</li>
+          <li>위의 <b>'앱 설치하기'</b> 버튼이 보이면 누릅니다.</li>
+          <li>버튼이 없으면 오른쪽 위 <b>⋮ 메뉴 → '앱 설치'</b>(또는 '홈 화면에 추가')를 누릅니다.</li>
+        </ol>
+      </section>
+      <section class="card qr" id="desktop" hidden>
+        <h2>휴대폰 카메라로 찍으세요</h2>
+        <div id="qr" aria-label="설치 페이지 QR 코드"></div>
+        <p class="sub">QR 코드를 찍으면 휴대폰에서 이 설치 페이지가 열립니다.</p>
+      </section>
+
+      <section class="card">
+        <h2>가족에게 보내기</h2>
+        <code class="url" id="url"></code>
+        <div class="row">
+          <button type="button" id="share">링크 공유</button>
+          <button type="button" id="copy">링크 복사</button>
+        </div>
+        <p class="sub" style="margin-top: 10px">앱을 열면 각자 자기 이름을 고르고 PIN을 입력합니다.</p>
+      </section>
+
+      <p class="open"><a href="./">설치 없이 바로 열기 →</a></p>
+    </main>
+    <script src="vendor/qrcode.js"></script>
+    <script>
+      (() => {
+        const $ = (s) => document.querySelector(s);
+        const ua = navigator.userAgent;
+        const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        const android = /Android/i.test(ua);
+        const mobile = ios || android;
+        const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+        const link = location.origin + "/install";
+        $("#url").textContent = link;
+
+        if (standalone) $("#done").hidden = false;
+        if (ios) $("#ios").classList.add("now");
+        if (android) $("#android").classList.add("now");
+        for (const id of ["#ios", "#android"])
+          if ($(id).classList.contains("now"))
+            $(id).querySelector("h2").insertAdjacentHTML("beforeend", '<span class="badge">내 기기</span>');
+        if (ios) $("#android").before($("#ios"));
+        else if (android) $("#ios").before($("#android"));
+
+        // In-app browsers (KakaoTalk, Instagram, …) cannot install apps: send the page to the real browser.
+        const inapp = /KAKAOTALK|Instagram|FBAN|FBAV|Line\//i.test(ua) || (ios && /CriOS|FxiOS|EdgiOS/.test(ua));
+        if (inapp && !standalone) {
+          const note = $("#inapp");
+          note.hidden = false;
+          if (/KAKAOTALK/i.test(ua) && ios) {
+            note.textContent =
+              "카카오톡 안에서는 설치할 수 없어요. 잠시 후 Safari로 다시 엽니다. 열리지 않으면 오른쪽 아래 ⋯ → 'Safari로 열기'를 누르세요.";
+            setTimeout(() => (location.href = "kakaotalk://web/openExternal?url=" + encodeURIComponent(link)), 600);
+          } else if (android) {
+            note.textContent =
+              "이 앱 안의 브라우저에서는 설치할 수 없어요. Chrome으로 다시 엽니다. 열리지 않으면 ⋮ 메뉴 → '다른 브라우저로 열기'를 누르세요.";
+            setTimeout(
+              () =>
+                (location.href =
+                  "intent://" + location.host + "/install#Intent;scheme=https;package=com.android.chrome;end"),
+              600,
+            );
+          } else {
+            note.textContent = ios
+              ? "iPhone에서는 Safari에서만 홈 화면에 추가할 수 있어요. 아래 링크를 복사해 Safari에서 열어주세요."
+              : "이 앱 안의 브라우저에서는 설치할 수 없어요. 메뉴에서 '다른 브라우저로 열기'를 눌러주세요.";
+          }
+        }
+
+        if (!mobile && typeof qrcode === "function") {
+          const qr = qrcode(0, "M");
+          qr.addData(link);
+          qr.make();
+          $("#qr").innerHTML = qr.createSvgTag({ cellSize: 6, margin: 2, scalable: true });
+          $("#desktop").hidden = false;
+          $("#ios").before($("#desktop"));
+        }
+
+        let deferred = null;
+        window.addEventListener("beforeinstallprompt", (e) => {
+          e.preventDefault();
+          deferred = e;
+          if (!standalone) $("#prompt").hidden = false;
+        });
+        window.addEventListener("appinstalled", () => {
+          $("#prompt").hidden = true;
+          $("#done").hidden = false;
+        });
+        $("#installBtn").onclick = async () => {
+          if (!deferred) return;
+          deferred.prompt();
+          await deferred.userChoice.catch(() => {});
+          deferred = null;
+          $("#prompt").hidden = true;
+        };
+        $("#share").hidden = !navigator.share;
+        $("#share").onclick = () =>
+          navigator
+            .share({ title: "Lingo Daily 앱 설치", text: "가족 단어 공부 앱을 설치해 주세요.", url: link })
+            .catch(() => {});
+        $("#copy").onclick = async () => {
+          try {
+            await navigator.clipboard.writeText(link);
+            $("#copy").textContent = "복사했어요 ✓";
+          } catch {
+            prompt("이 링크를 복사하세요", link);
+          }
+        };
+        if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+      })();
+    </script>
+  </body>
+</html>

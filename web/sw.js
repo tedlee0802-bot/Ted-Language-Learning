@@ -5,6 +5,7 @@ const CACHE = "lingo-daily-" + VERSION;
 const SHELL = [
   "./",
   "index.html",
+  "install.html",
   "style.css",
   "homework.css",
   "family.js",

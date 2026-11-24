@@ -63,7 +63,9 @@ node --test tests/homework.test.mjs tests/family.test.mjs tests/levels.test.mjs
 
 ## 휴대폰 앱 설치 (PWA)
 
-사이트에 `manifest.webmanifest`, 서비스 워커(`sw.js`)와 아이콘이 들어 있어 휴대폰 홈 화면에 앱으로 설치됩니다. 앱 안의 **설정 → 앱 설치 방법**에 기기별 안내와 링크 공유 버튼이 있습니다.
+사이트에 `manifest.webmanifest`, 서비스 워커(`sw.js`)와 아이콘이 들어 있어 휴대폰 홈 화면에 앱으로 설치됩니다.
+
+**앱 다운로드 링크는 `https://<사이트 주소>/install`** 입니다. 이 페이지는 로그인 없이 열리고, 접속한 기기에 맞는 설치 방법을 먼저 보여줍니다(Android Chrome에서는 '앱 설치하기' 버튼). 컴퓨터에서 열면 휴대폰으로 찍을 QR 코드가 나오고, 카카오톡 같은 앱 안의 브라우저로 열면 Safari·Chrome으로 다시 열도록 안내합니다. 같은 링크는 앱의 **설정 → 앱 설치 방법**에서 복사·공유할 수 있습니다. QR 코드는 `web/vendor/qrcode.js`(qrcode-generator 1.4.4, MIT)로 기기 안에서 만듭니다.
 
 - iPhone·iPad: Safari로 사이트 열기 → 공유 버튼 → 홈 화면에 추가
 - Android: Chrome으로 사이트 열기 → ⋮ 메뉴 → 앱 설치(또는 홈 화면에 추가)

@@ -451,18 +451,24 @@
     }
     const share = section(
       d,
-      "가족에게 보내기",
-      "이 주소를 가족에게 보내고, 위 방법으로 설치하게 해주세요. 들어올 때는 각자의 PIN을 사용합니다.",
+      "앱 다운로드 링크",
+      "이 링크를 가족에게 보내면 기기에 맞는 설치 방법이 나옵니다. 컴퓨터에서 열면 휴대폰으로 찍을 QR 코드가 보입니다. 들어올 때는 각자의 PIN을 사용합니다.",
     );
-    const url = location.origin + "/";
+    const url = location.origin + "/install";
     const code = E("code", "share-url", url);
     share.append(code);
+    const open = E("a", "", "설치 페이지 열기 (QR 코드) ↗");
+    open.href = url;
+    open.target = "_blank";
+    open.rel = "noopener";
+    share.append(open);
     share.append(
       action(
         navigator.share ? "링크 공유" : "링크 복사",
         async () => {
           try {
-            if (navigator.share) await navigator.share({ title: "Lingo Daily", text: "가족 단어 공부 앱", url });
+            if (navigator.share)
+              await navigator.share({ title: "Lingo Daily 앱 설치", text: "가족 단어 공부 앱을 설치해 주세요.", url });
             else {
               await navigator.clipboard.writeText(url);
               alert("링크를 복사했습니다.");

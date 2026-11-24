@@ -65,7 +65,8 @@ const source =
   `
 const ASSETS = ${JSON.stringify(assets)};
 function asset(path) {
-  const file = path === "/" ? "/index.html" : path;
+  // "/" serves the app; "/install" (any extension-less path with a matching .html) serves that page.
+  const file = path === "/" ? "/index.html" : ASSETS[path] ? path : ASSETS[path + ".html"] ? path + ".html" : path;
   const a = ASSETS[file];
   if (!a) return new Response("Not found", { status: 404 });
   const body = a.b64 ? Uint8Array.from(atob(a.body), (c) => c.charCodeAt(0)) : a.body;

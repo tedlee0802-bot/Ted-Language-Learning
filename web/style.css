@@ -689,6 +689,12 @@ form .primary {
   min-height: 48px;
   margin-top: 8px;
 }
+.sheet-section a[target="_blank"] {
+  display: inline-block;
+  margin: 0 12px 8px 0;
+  color: var(--accent-strong);
+  font-weight: 700;
+}
 .share-url {
   display: block;
   padding: 10px 12px;
