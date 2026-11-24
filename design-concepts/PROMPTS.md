@@ -41,6 +41,12 @@ Create a high-fidelity UI mockup image (1600x1000, desktop web app, flat screens
 Create a high-fidelity UI mockup image (1600x1000, desktop web app, flat screenshot, no device frame) for an original Korean-language language-learning dashboard named "lingo daily". Style: premium dark mode, near-black navy background (#0E1220), elevated charcoal cards, vivid but limited accents (electric blue for English, coral red for Chinese), bold geometric Korean sans-serif, crisp data visualization. Layout: left sidebar with "데일리 숙제", "학습 계획", "학습 리포트". Top: greeting "오늘도 한 걸음, Ted" with a 14-day streak flame-free badge "연속 14일". Two large progress rings side by side: "영어 18/30" (blue) and "중국어 12/25" (coral). Middle: a flexible lesson board (not a forced path) with three cards the learner can choose — "전날 복습 · 07:30 열림", "새 숙제 · 20 VOCA + 10 IDIOM", "당일 시험 · 19:00 열림 (잠김)" — plus a side card "오답·간격 복습 12개" with chips "3일 · 7일 · 30일". Bottom: a GitHub-style study heatmap for the last 12 weeks and a line chart of evening test scores (68, 74, 81, 86, 88%). All Korean text must be legible and correctly spelled. No logos or brand assets of existing apps.
 ```
 
+## 시안 A-M: Calm Focus 모바일
+
+```
+Create a high-fidelity UI mockup image (portrait, 9:16 phone screen, mobile web app, flat screenshot, no device frame, no status-bar clutter) for an original Korean-language vocabulary study app named "lingo daily". Use exactly the same visual language as a calm desktop design: warm off-white background (#FAF8F4), deep ink text, a single muted teal accent, soft 1px borders, 16px radius cards, Pretendard-like Korean sans-serif, generous whitespace, large confident headings. Single-column layout, top to bottom: (1) compact header with "lingo daily" wordmark on the left and a small date "10월 20일 (화)" on the right; below it a full-width English/중국어 segmented toggle with English selected. (2) Heading "오늘도, 하나씩 더." with subline "매일 꾸준히, 오래 기억에 남는 어휘 학습". (3) A horizontal 3-step progress stepper: "07:30 전날 복습 ✓" (done), "새 숙제 20+10" (current, teal), "19:00 시험" (locked with a lock icon). (4) One large flashcard filling most of the width showing "arrive", IPA /əˈraɪv/, a round speaker button, and a full-width teal "뜻 보기" button; under the card a thin progress bar with "7 / 30" and small left/right arrows. (5) A row of three compact stat tiles "42 맞힌 표현", "18 서로 다른 날 정답", "6 누적 시험". (6) A slim card "간격 복습 3일 · 7일 · 30일 — 12개 대기". (7) Fixed bottom tab bar with 4 icons labelled "홈", "단어장", "리포트", "설정", 홈 active in teal. Thumb-friendly 48px+ tap targets. All Korean text must be legible and correctly spelled. No logos or brand assets of existing apps.
+```
+
 ## 모바일 변형 (선택)
 
 위 프롬프트에서 "1600x1000, desktop web app"을 "1080x1920, mobile web app, single column"으로 바꿔 같은 콘텐츠를 세로로 배치한다.
@@ -52,3 +58,4 @@ Create a high-fidelity UI mockup image (1600x1000, desktop web app, flat screens
 | `concept-a.png` | A. Calm Focus | 한국어·IPA 정확. 현재 사이트 구조(3단계·통계 3개)와 가장 가까워 적용 부담이 작음 |
 | `concept-b.png` | B. Sticker Collection | 한국어·병음 정확. 토글이 중국어로 선택돼 있는데 영어 단어가 함께 보이는 등 상태 표시가 섞임 |
 | `concept-c.png` | C. Coach Dashboard | 지시와 달리 불꽃 아이콘이 들어감. 차트 날짜(1/17~1/25)가 실제 일정과 다르고 "정해진 순서 없이"는 전날 복습 선행 규칙과 충돌하므로 적용 시 문구 조정 필요 |
+| `concept-a-mobile.png` | A. Calm Focus 모바일 (941×1672) | 한국어 정확, 데스크톱 A와 색·타이포 일치. 강세 기호가 ˈ 대신 ' 로 그려짐(실제 구현 시 폰트로 해결) |
