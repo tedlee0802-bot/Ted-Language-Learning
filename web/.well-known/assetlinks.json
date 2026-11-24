@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.lingodaily.family",
+      "sha256_cert_fingerprints": ["04:A1:AB:6B:EF:D8:37:91:71:EC:C4:4E:AE:1F:A7:09:57:98:52:71:0D:FC:19:1B:48:82:7C:8C:A5:B2:52:1A"]
+    }
+  }
+]

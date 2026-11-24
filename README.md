@@ -89,6 +89,16 @@ node --test tests/homework.test.mjs tests/family.test.mjs tests/levels.test.mjs
 | `.openai/hosting.example.json` | 실제 프로젝트 ID를 제외한 Sites 설정 예시 |
 | `COACH_OPERATIONS.md` | 개인 사이트의 수업 운영 방식 |
 
+## Cloudflare 무료 배포 (도메인 없이)
+
+Sites 대신 Cloudflare 무료 계정(Workers + D1)에 올려 `https://lingo-daily.<이름>.workers.dev` 주소로 쓸 수 있습니다. R2가 없을 때 서버는 `DB`로 연결된 D1(SQLite)에 같은 방식으로 저장합니다.
+
+```bash
+CLOUDFLARE_API_TOKEN=<토큰> node scripts/deploy-cloudflare.mjs
+```
+
+토큰 권한: Account · Workers Scripts · Edit, Account · D1 · Edit, Account · Account Settings · Read. 스크립트가 D1 데이터베이스를 만들고(처음 한 번), Worker를 올리고, workers.dev 주소를 켭니다. 다시 실행하면 코드만 바뀌고 데이터는 그대로입니다. APK를 함께 내보내려면 먼저 `android/build-apk.sh <주소>`를 실행한 뒤 배포합니다. 코치 API를 쓰려면 Cloudflare에서 Worker 비밀 값 `COACH_KEY`를 설정하세요(재배포해도 유지됩니다).
+
 ## 배포 순서 (가족 사용)
 
 1. 이 브랜치를 기존 Sites 프로젝트에 배포합니다. 사이트가 아직 본인 전용인 상태에서 진행합니다.
