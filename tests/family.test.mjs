@@ -46,7 +46,7 @@ async function family() {
   const setup = await req(e, "/api/auth/setup", { body: { name: "Ted", pin: "2468" } });
   assert.equal(setup.status, 200);
   const owner = setup.cookie;
-  const added = await req(e, "/api/auth/profiles", { body: { name: "딸", pin: "1357" }, cookie: owner });
+  const added = await req(e, "/api/auth/profiles", { body: { name: "Erin", pin: "1357" }, cookie: owner });
   assert.equal(added.status, 200);
   const login = await req(e, "/api/auth/login", { body: { id: added.data.profile.id, pin: "1357" } });
   assert.equal(login.status, 200);
@@ -78,7 +78,7 @@ test("setup creates the owner once; afterwards every learner request needs a ses
     state.data.profiles.map((p) => [p.name, p.owner]),
     [
       ["Ted", true],
-      ["딸", false],
+      ["Erin", false],
     ],
   );
   assert.equal(state.data.me, null);
@@ -144,7 +144,7 @@ test("only the owner manages profiles; anyone can change their own PIN; logout e
   assert.equal((await req(e, "/api/auth/login", { body: { id: kidId, pin: "8642" } })).status, 200);
   assert.equal((await req(e, "/api/auth/pin", { cookie: owner, body: { id: kidId, pin: "5555" } })).status, 200);
   assert.equal((await req(e, "/api/auth/login", { body: { id: kidId, pin: "5555" } })).status, 200);
-  assert.equal((await req(e, "/api/auth/profiles", { cookie: owner, body: { name: "딸", pin: "1234" } })).status, 400);
+  assert.equal((await req(e, "/api/auth/profiles", { cookie: owner, body: { name: "Erin", pin: "1234" } })).status, 400);
   assert.equal((await req(e, "/api/auth/logout", { cookie: kid, body: {} })).status, 200);
   assert.equal((await req(e, "/api/homework", { cookie: kid })).status, 401);
   const removed = await req(e, "/api/auth/remove", { cookie: owner, body: { id: kidId } });
