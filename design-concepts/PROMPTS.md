@@ -44,3 +44,11 @@ Create a high-fidelity UI mockup image (1600x1000, desktop web app, flat screens
 ## 모바일 변형 (선택)
 
 위 프롬프트에서 "1600x1000, desktop web app"을 "1080x1920, mobile web app, single column"으로 바꿔 같은 콘텐츠를 세로로 배치한다.
+
+## 생성 결과 (Codex CLI 0.172.0 내장 이미지 생성, 1568×1003)
+
+| 파일 | 시안 | 검토 메모 |
+| --- | --- | --- |
+| `concept-a.png` | A. Calm Focus | 한국어·IPA 정확. 현재 사이트 구조(3단계·통계 3개)와 가장 가까워 적용 부담이 작음 |
+| `concept-b.png` | B. Sticker Collection | 한국어·병음 정확. 토글이 중국어로 선택돼 있는데 영어 단어가 함께 보이는 등 상태 표시가 섞임 |
+| `concept-c.png` | C. Coach Dashboard | 지시와 달리 불꽃 아이콘이 들어감. 차트 날짜(1/17~1/25)가 실제 일정과 다르고 "정해진 순서 없이"는 전날 복습 선행 규칙과 충돌하므로 적용 시 문구 조정 필요 |
