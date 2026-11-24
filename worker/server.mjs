@@ -461,7 +461,52 @@ function gradePlacement(l, answers) {
   return { bands, recommended };
 }
 
+// Storage for hosts without R2 (e.g. a free Cloudflare account): a D1 (SQLite) database bound as `DB`
+// exposed through the small subset of the R2 bucket API this server uses. D1 reads see writes at once,
+// which the review gate and sessions rely on.
+const d1Ready = new WeakMap();
+export function d1Bucket(db) {
+  const ready = () => {
+    if (!d1Ready.has(db))
+      d1Ready.set(
+        db,
+        db.prepare("CREATE TABLE IF NOT EXISTS objects (key TEXT PRIMARY KEY, value TEXT NOT NULL)").run(),
+      );
+    return d1Ready.get(db);
+  };
+  return {
+    async get(key) {
+      await ready();
+      const row = await db.prepare("SELECT value FROM objects WHERE key = ?1").bind(key).first();
+      return row ? { text: async () => row.value } : null;
+    },
+    async put(key, value) {
+      await ready();
+      await db
+        .prepare(
+          "INSERT INTO objects (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(key, String(value))
+        .run();
+    },
+    async delete(key) {
+      await ready();
+      await db.prepare("DELETE FROM objects WHERE key = ?1").bind(key).run();
+    },
+    async list({ prefix = "", cursor, limit = 1000 } = {}) {
+      await ready();
+      const { results } = await db
+        .prepare("SELECT key FROM objects WHERE substr(key, 1, length(?1)) = ?1 AND key > ?2 ORDER BY key LIMIT ?3")
+        .bind(prefix, cursor || "", limit + 1)
+        .all();
+      const page = results.slice(0, limit).map((r) => ({ key: r.key }));
+      return { objects: page, truncated: results.length > limit, cursor: page.at(-1)?.key };
+    },
+  };
+}
+
 export async function api(request, env, now = new Date()) {
+  if (!env.BUCKET && env.DB) env = { ...env, BUCKET: d1Bucket(env.DB) };
   if (!env.BUCKET) return json({ error: "학습 저장소를 준비 중입니다." }, 503);
   const u = new URL(request.url),
     path = u.pathname;
