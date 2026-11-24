@@ -1,32 +1,845 @@
-(()=>{const $=s=>document.querySelector(s),E=(tag,cls,text)=>{let e=document.createElement(tag);e.className=cls;e.textContent=text;return e},today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());let selected=today(),lang='en',data=null,active=true,busy=false,quiz=null;
-const nav=E('button','active','✦  DAILY HOMEWORK');nav.dataset.view='homework';$('nav').prepend(nav);const root=E('section','homework','');root.id='homework';$('header').after(root);const original=[...$('main').children].filter(e=>e!==root&&e.tagName!=='HEADER');function toggle(on){active=on;root.hidden=!on;$('main').classList.toggle('coach-active',on);document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',on?b===nav:b.classList.contains('active')));if(on)load()};nav.onclick=()=>toggle(true);document.querySelectorAll('nav button:not([data-view="homework"])').forEach(b=>b.addEventListener('click',()=>{toggle(false);nav.classList.remove('active')}));
-async function api(path,body){const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});let v=await r.json();if(!r.ok)throw Error(v.error||'요청을 처리하지 못했습니다.');return v}function button(label,fn,cls=''){let b=E('button',cls,label);b.onclick=fn;return b}function alertBox(msg){let e=$('#coach-message');if(e){e.textContent=msg;e.hidden=false}}async function action(fn){if(busy)return;busy=true;try{await fn()}catch(e){alertBox(e.message)}finally{busy=false}}const url=(path,mode)=>path+'?date='+selected+'&lang='+lang+(mode?'&mode='+mode:'');
-async function load(){root.setAttribute('aria-busy','true');if(!root.children.length)root.append(E('p','','숙제를 불러오는 중입니다…'));try{data=await api(url('/api/homework'));render()}catch(e){root.replaceChildren(E('h1','','DAILY HOMEWORK'),E('p','coach-alert',e.message),button('다시 불러오기',load))}finally{root.setAttribute('aria-busy','false')}}
-function render(){if(active)nav.classList.add('active');root.replaceChildren();let top=E('div','coach-heading',''),t=E('div','','');t.append(E('div','eyebrow','YOUR ONE-YEAR LANGUAGE JOURNEY'),E('h1','','오늘 익히고, 내일 기억하기 ✦'),E('p','','LISA와 함께 기초부터. 매일의 복습이 오래가는 어휘가 됩니다.'));top.append(t,E('span','coach-pill','● 서버에 학습 기록 저장'));root.append(top);let bar=E('div','coach-toolbar','');for(const [l,name]of [['en','🇺🇸 영어'],['zh','🇨🇳 중국어']])bar.append(button(name,()=>{lang=l;load()},lang===l?'selected':''));let date=E('input','','');date.type='date';date.value=selected;date.setAttribute('aria-label','숙제 날짜');date.onchange=()=>{if(date.value){selected=date.value;load()}};bar.append(date,button('오늘',()=>{selected=today();load()}));root.append(bar);let msg=E('p','coach-alert','');msg.id='coach-message';msg.setAttribute('role','status');msg.hidden=true;root.append(msg);
-let rhythm=E('div','coach-rhythm','');rhythm.append(E('span','','☀ 07:30 전날 복습 → 새 숙제'),E('span','','☾ 19:00 당일 시험'),E('span','','토·일 07:30 주간 전체 SHUFFLE'),E('small','','한국 시간 · 정시 알림 예약은 아직 연결되지 않았습니다'));root.append(rhythm);let stats=E('div','coach-stats','');for(const [v,label]of [[data.stats.tested,'시험에서 맞힌 표현'],[data.stats.retained,'서로 다른 날 정답 표현'],[data.stats.attempts,'누적 시험 횟수']]){let e=E('article','','');e.append(E('strong','',String(v)),E('span','',label));stats.append(e)}root.append(stats);let intro=E('div','coach-intro','');intro.append(E('h2','',data.weekend?'주말, 한 주의 표현을 내 것으로':'DAILY '+(lang==='en'?'ENGLISH':'CHINESE')),E('p','',data.weekend?(lang==='en'?'100 VOCA + 50 IDIOM · 총 150문항':'100 VOCA + 25 IDIOM · 총 125문항'):(lang==='en'?'20 VOCA + 10 IDIOM':'20 VOCA + 5 IDIOM')+' · 기초부터 조금씩 넓혀갑니다.'));root.append(intro);
-if(!data.available){root.append(E('div','coach-alert','이 날짜의 숙제는 오전 7시 30분에 공개됩니다.'));}
-else if(data.weekend){let panel=E('div','coach-panel','');panel.append(E('h2','','토·일 모두 다른 순서로 전체 복습'),E('p','','그 주 월~금에 배정한 모든 표현을 섞습니다. 아직 공부하지 못한 평일 분량도 포함됩니다.'),button('주말 누적 시험 시작',()=>startQuiz('weekend'),'primary'));root.append(panel)}
-else {let flow=E('div','coach-steps','');let rev=E('article','coach-panel','');rev.append(E('span','eyebrow','STEP 01 · REMEMBER'),E('h2','','전날 표현 먼저 복습'),E('p','',data.previousDate?data.previousDate+'의 단어와 숙어 전체를 다시 확인합니다.':'첫 수업입니다. 오늘은 새 숙제부터 시작하세요.'));if(data.previousDate)rev.append(button(data.reviewRequired?'복습 시험 시작':'✓ 복습 완료 · 다시 풀기',()=>startQuiz('review'),data.reviewRequired?'primary':''));let evening=E('article','coach-panel','');evening.append(E('span','eyebrow','STEP 03 · RECALL'),E('h2','','저녁 7시, 오늘의 테스트'),E('p','','뜻 고르기 또는 표현 직접 쓰기로 기억을 확인하세요.'));let b=button('오늘의 시험 시작',()=>startQuiz('evening'),'primary');b.disabled=selected===data.serverDate&&data.serverTime<1900||data.reviewRequired;evening.append(b);flow.append(rev,evening);root.append(flow);
-if(data.reviewRequired)root.append(E('div','coach-alert','STEP 01 복습 시험을 끝내면 오늘의 새 표현이 열립니다. 정답률과 오답은 별도로 기록됩니다.'));
-if(data.lesson){let title=E('div','section-title','');title.append(E('h2','','STEP 02 · 오늘의 새로운 표현'),E('span','',data.lesson.level+' · '+data.study.length+'/'+data.lesson.items.length+' 학습 확인'));root.append(title);root.append(button('▣ 휴대폰 한 화면 요약 · 이미지 저장',showSummary,'summary-open'));let filter=E('div','coach-filter','');filter.append(E('span','','영어 /IPA/ · 중국어 병음 · 한국어 뜻'),E('small','','🔊 브라우저 음성합성 · 클릭해서 듣기'));root.append(filter);let grid=E('div','word-grid','');data.lesson.items.forEach((i,n)=>grid.append(wordCard(i,n,true)));root.append(grid)}else if(data.unlocked){root.append(E('p','coach-alert','오늘 수업을 준비 중입니다. 예약 실행이 완료되면 새로고침해주세요.'))}}
-let review=E('section','coach-panel extra-review','');review.append(E('h2','','오답 · 3일 / 7일 / 30일 복습'),E('p','','최근 오답을 먼저, 간격 복습 표현을 이어서 보여줍니다. 틀린 표현은 이후 시험에서 다시 확인합니다.'));if(data.extraReview.length){review.append(button('복습 표현 시험 보기',()=>startQuiz('spaced'),'primary'));review.append(button('뜻 가리고 복습하기',()=>{review.classList.toggle('conceal');review.querySelectorAll('.word-meaning').forEach(e=>e.tabIndex=0)}));let grid=E('div','word-grid','');data.extraReview.forEach((i,n)=>grid.append(wordCard(i,n,false)));review.append(grid)}else review.append(E('p','sub','시험을 마치면 오답과 간격 복습 표현이 여기에 모입니다.'));root.append(review);
-let history=E('section','coach-panel','');history.append(E('h2','','나의 기억력 추적'),E('p','','최근 시험 정답률 · 두 언어는 각각 기록합니다. 같은 날 반복 정답은 장기 기억 지표에 중복 계산하지 않습니다.'));let chart=E('div','score-chart','');for(const a of data.stats.recent){let c=E('div','score-column',''),bar=E('div','score-bar','');bar.style.height=Math.max(3,a.score)+'px';c.append(E('strong','',a.score+'%'),bar,E('small','',a.date.slice(5)),E('small','',{review:'복습',evening:'저녁',weekend:'주말',spaced:'간격'}[a.mode]));chart.append(c)}if(!data.stats.recent.length)chart.append(E('p','sub','첫 시험부터 성장 기록이 시작됩니다.'));history.append(chart);root.append(history);
-let results=E('div','coach-result-list','');data.results.forEach(a=>{let b=button(({review:'전날 복습',evening:'저녁 시험',weekend:'주말 시험',spaced:'간격 복습'}[a.mode])+' · '+a.correct+'/'+a.total+' · '+a.score+'% → 오답 확인',()=>showResult(a));results.append(b)});root.append(results);let plan=E('div','coach-panel roadmap','');plan.append(E('h2','','1년, 기초에서 실전까지'),E('p','','1–3개월: 일상 기초 → 4–6개월: 여행·사회생활 → 7–9개월: 비즈니스·협상 → 10–12개월: 시사·문화·깊이 있는 대화'),E('p','','달력보다 기억한 정도를 우선합니다. 최근 저녁 시험 3회의 정답률이 85% 이상이면 조금씩 높이고, 60% 미만이면 기초를 보강합니다. 단계는 비공식 학습 기준입니다.'),E('small','','월별 경로는 방향을 잡기 위한 목표이며 실제 난도는 성적에 맞춰 조절합니다. 신규 어휘는 평일, 주말에는 누적 복습합니다. 숙어에는 구동사·고정 표현과 중국어 일상 관용 표현이 포함됩니다.'));root.append(plan);let footer=E('div','coach-footer','');footer.append(E('span','','숙제·시험 결과는 서버에 저장됩니다. 기존 대시보드 기록은 현재 브라우저에 유지됩니다.'),button('수준 설정',profileForm));root.append(footer)}
-function speak(i){if(!('speechSynthesis'in window)){alertBox('이 브라우저는 음성합성을 지원하지 않습니다. Chrome 또는 Safari에서 시도해주세요.');return}speechSynthesis.cancel();let s=new SpeechSynthesisUtterance(i.term);s.lang=lang==='en'?'en-US':'zh-CN';let voices=speechSynthesis.getVoices();s.voice=voices.find(v=>v.lang===s.lang)||voices.find(v=>v.lang.startsWith(lang==='en'?'en':'zh'))||null;s.rate=.85;s.onerror=()=>alertBox('음성을 재생하지 못했습니다. 기기에 영어·중국어 음성팩이 설치되어 있는지 확인해주세요.');speechSynthesis.speak(s)}
-function wordCard(i,n,study){let card=E('article','word-card',''),head=E('div','word-top','');head.append(E('span','',String(n+1).padStart(2,'0')+' · '+i.kind.toUpperCase()),button('🔊',()=>speak(i),'sound'));head.lastChild.setAttribute('aria-label',i.term+' 발음 듣기');card.append(head,E('h3','',i.term),E('p','pronunciation',lang==='en'?'/'+i.pronunciation+'/':i.pronunciation));let meaning=E('p','word-meaning',i.meaning);meaning.onclick=()=>meaning.classList.toggle('reveal');card.append(meaning);if(i.example)card.append(E('p','word-example',i.example));if(i.exampleMeaning)card.append(E('p','word-example',i.exampleMeaning));if(study){let checked=data.study.includes(i.id),b=button(checked?'✓ 학습 확인 완료':'학습 확인',()=>action(async()=>{let r=await api('/api/study',{date:selected,lang,ids:[i.id]});data.study=r.ids;mirrorLegacy();render()}),'learn-check');b.disabled=checked;card.append(b)}return card}
-function mirrorLegacy(){try{let s=JSON.parse(localStorage.getItem('lingodaily-v1'));if(!s?.plans)return;for(const [kind,cat]of [['voca',0],['idiom',7]]){let id='lisa-'+selected+'-'+lang+'-'+kind;let total=data.lesson.items.filter(i=>i.kind===kind).length;let value=data.lesson.items.filter(i=>i.kind===kind&&data.study.includes(i.id)).length;if(!s.plans.some(p=>p.id===id))s.plans.push({id,lang,cat,title:'LISA DAILY '+kind.toUpperCase(),target:total,time:'07:30',start:selected,repeat:false});s.records[selected]??={};s.records[selected][id]={value,minutes:0}}localStorage.setItem('lingodaily-v1',JSON.stringify(s));window.dispatchEvent(new Event('lisa-records-updated'))}catch{}}
-function dialog(title){let old=$('#coach-dialog');if(old)old.remove();let d=E('dialog','coach-dialog','');d.id='coach-dialog';let h=E('div','section-title','');h.append(E('h2','',title),button('✕',()=>d.close()));h.lastChild.setAttribute('aria-label','닫기');d.append(h);document.body.append(d);d.addEventListener('close',()=>{if('speechSynthesis'in window)speechSynthesis.cancel()});return d}
-function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){let j=crypto.getRandomValues(new Uint32Array(1))[0]%(i+1);[a[i],a[j]]=[a[j],a[i]]}return a}
-async function startQuiz(mode){await action(async()=>{const q=await api(url('/api/quiz',mode));if(!q.items.length){alertBox('복습할 이전 수업이 없습니다.');return}let d=dialog(({review:'전날 복습',evening:'오늘의 저녁 시험',weekend:'주말 전체 SHUFFLE',spaced:'오답·간격 복습 시험'}[mode]));d.append(E('p','','총 '+q.items.length+'문항 · 중간에 닫아도 이 브라우저에서 이어서 풀 수 있습니다. 정답과 해설은 제출 후 공개됩니다.'));for(const [format,label]of [['choice','표현 보고 뜻 고르기'],['typing','뜻 보고 표현 직접 쓰기']])d.append(button(label,()=>{let key=['lisa-quiz',selected,lang,mode,format].join(':'),saved;try{saved=JSON.parse(localStorage.getItem(key))}catch{}let ids=new Set(q.items.map(i=>i.id));let items=saved?.items?.length===q.items.length&&saved.items.every(i=>ids.has(i.id))?saved.items.map(i=>q.items.find(x=>x.id===i.id)):shuffle(q.items);quiz={items,date:selected,lang,mode,format,key,answers:saved?.answers||{},index:saved?.index||0};d.close();quizRender()},'quiz-mode'));d.showModal()})}
-function quizRender(){let d=dialog('기억 꺼내기 · '+(quiz.format==='choice'?'뜻 고르기':'표현 쓰기')),i=quiz.items[quiz.index];d.append(E('p','quiz-progress',(quiz.index+1)+' / '+quiz.items.length+' · 답변 '+Object.keys(quiz.answers).length+'개'));let progress=E('progress','','');progress.max=quiz.items.length;progress.value=Object.keys(quiz.answers).length;progress.setAttribute('aria-label','답변 진행률');d.append(progress,E('span','eyebrow',i.kind.toUpperCase()),E('h3','quiz-question',quiz.format==='choice'?i.term:i.meaning));if(quiz.format==='choice'){let options=quiz.options?.[i.id];quiz.options??={};if(!options){options=shuffle([i.meaning,...shuffle([...new Set(quiz.items.filter(x=>x.id!==i.id).map(x=>x.meaning))].filter(v=>v!==i.meaning)).slice(0,3)]);quiz.options[i.id]=options}for(const v of options){let b=button(v,()=>{quiz.answers[i.id]=v;persistQuiz();quizRender()},'quiz-option'+(quiz.answers[i.id]===v?' chosen':''));b.setAttribute('aria-pressed',String(quiz.answers[i.id]===v));d.append(b)}}else{let label=E('label','','영어 표현 또는 중국어 한자를 입력하세요.');label.htmlFor='quiz-answer';let input=E('input','','');input.id='quiz-answer';input.autocomplete='off';input.spellcheck=false;input.value=quiz.answers[i.id]||'';input.oninput=()=>{if(input.value.trim())quiz.answers[i.id]=input.value;else delete quiz.answers[i.id];persistQuiz()};d.append(label,input,E('p','sub','영어는 대소문자·공백·구두점을 무시합니다. 중국어는 한자로 입력하세요.'))}let controls=E('div','quiz-controls',''),prev=button('이전',()=>{quiz.index--;persistQuiz();quizRender()});prev.disabled=!quiz.index;controls.append(prev);if(quiz.index<quiz.items.length-1)controls.append(button('다음',()=>{quiz.index++;persistQuiz();quizRender()},'primary'));else controls.append(button('전체 답안 제출',async()=>{let missing=quiz.items.findIndex(i=>!quiz.answers[i.id]);if(missing>=0){quiz.index=missing;persistQuiz();quizRender();$('#quiz-message').textContent='답하지 않은 문제를 먼저 풀어주세요.';return}let submit=controls.lastChild;submit.disabled=true;try{let a=await api('/api/quiz/submit',{date:quiz.date,lang:quiz.lang,mode:quiz.mode,format:quiz.format,answers:quiz.items.map(i=>({id:i.id,answer:quiz.answers[i.id]}))});localStorage.removeItem(quiz.key);d.close();await load();showResult(a)}catch(e){$('#quiz-message').textContent=e.message;submit.disabled=false}},'primary'));d.append(controls);let msg=E('p','coach-alert','');msg.id='quiz-message';msg.setAttribute('role','status');d.append(msg);d.showModal();if(quiz.format==='typing')$('#quiz-answer').focus()}
-function persistQuiz(){localStorage.setItem(quiz.key,JSON.stringify(quiz))}
-function showResult(a){let d=dialog('시험 결과 · '+a.score+'%');d.append(E('p','result-score',a.correct+' / '+a.total+' 정답'),E('p','',a.score>=85?'잘 기억하고 있어요. 다음 수업에서 조금씩 범위를 넓혀갑니다.':'오늘의 오답을 다시 듣고 확인해보세요. 다음 복습에서도 만나게 됩니다.'));if(!a.wrongItems.length)d.append(E('p','','모두 맞혔습니다! 다른 날에도 기억하는지 다시 확인해요.'));for(const i of a.wrongItems){let c=wordCard(i,0,false);c.append(E('small','wrong-answer','내 답: '+i.answer));d.append(c)}d.append(button('확인하고 계속하기',()=>{d.close();load()},'primary'));d.showModal()}
-function profileForm(){let d=dialog('나의 시작 수준'),form=E('form','','');for(const l of ['en','zh']){let label=E('label','',l==='en'?'영어':'중국어');label.htmlFor='profile-'+l;let s=E('select','','');s.id='profile-'+l;s.name=l;for(const [v,t]of [['beginner','기초 어휘부터 차근차근'],['basic','기초는 알지만 자주 잊어요'],['intermediate','중급 표현으로 넓히고 싶어요']]){let o=E('option','',t);o.value=v;s.append(o)}s.value=data.profile[l]||'beginner';form.append(label,s)}form.append(E('p','sub','자기 평가이며 공식 수준 진단이 아닙니다. 이미 배정된 수업은 유지하고 이후 수업부터 참고합니다.'));let b=E('button','primary','저장');b.type='submit';form.append(b);form.onsubmit=async e=>{e.preventDefault();try{await api('/api/profile',Object.fromEntries(new FormData(form)));d.close();load()}catch(e){alert(e.message)}};d.append(form);d.showModal()}
+(() => {
+  const $ = (s) => document.querySelector(s),
+    E = (tag, cls, text) => {
+      let e = document.createElement(tag);
+      e.className = cls;
+      e.textContent = text;
+      return e;
+    },
+    today = () =>
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+  let selected = today(),
+    lang = "en",
+    data = null,
+    active = true,
+    busy = false,
+    quiz = null;
+  const nav = E("button", "active", "✦  DAILY HOMEWORK");
+  nav.dataset.view = "homework";
+  $("nav").prepend(nav);
+  const root = E("section", "homework", "");
+  root.id = "homework";
+  $("header").after(root);
+  const original = [...$("main").children].filter((e) => e !== root && e.tagName !== "HEADER");
+  function toggle(on) {
+    active = on;
+    root.hidden = !on;
+    $("main").classList.toggle("coach-active", on);
+    document
+      .querySelectorAll("nav button")
+      .forEach((b) => b.classList.toggle("active", on ? b === nav : b.classList.contains("active")));
+    if (on) load();
+  }
+  nav.onclick = () => toggle(true);
+  document.querySelectorAll('nav button:not([data-view="homework"])').forEach((b) =>
+    b.addEventListener("click", () => {
+      toggle(false);
+      nav.classList.remove("active");
+    }),
+  );
+  async function api(path, body) {
+    const r = await fetch(
+      path,
+      body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {},
+    );
+    let v = await r.json();
+    if (!r.ok) throw Error(v.error || "요청을 처리하지 못했습니다.");
+    return v;
+  }
+  function button(label, fn, cls = "") {
+    let b = E("button", cls, label);
+    b.onclick = fn;
+    return b;
+  }
+  function alertBox(msg) {
+    let e = $("#coach-message");
+    if (e) {
+      e.textContent = msg;
+      e.hidden = false;
+    }
+  }
+  async function action(fn) {
+    if (busy) return;
+    busy = true;
+    try {
+      await fn();
+    } catch (e) {
+      alertBox(e.message);
+    } finally {
+      busy = false;
+    }
+  }
+  const url = (path, mode) => path + "?date=" + selected + "&lang=" + lang + (mode ? "&mode=" + mode : "");
+  async function load() {
+    root.setAttribute("aria-busy", "true");
+    if (!root.children.length) root.append(E("p", "", "숙제를 불러오는 중입니다…"));
+    try {
+      data = await api(url("/api/homework"));
+      render();
+    } catch (e) {
+      root.replaceChildren(
+        E("h1", "", "DAILY HOMEWORK"),
+        E("p", "coach-alert", e.message),
+        button("다시 불러오기", load),
+      );
+    } finally {
+      root.setAttribute("aria-busy", "false");
+    }
+  }
+  function render() {
+    if (active) nav.classList.add("active");
+    root.replaceChildren();
+    let top = E("div", "coach-heading", ""),
+      t = E("div", "", "");
+    t.append(
+      E("div", "eyebrow", "YOUR ONE-YEAR LANGUAGE JOURNEY"),
+      E("h1", "", "오늘 익히고, 내일 기억하기 ✦"),
+      E("p", "", "LISA와 함께 기초부터. 매일의 복습이 오래가는 어휘가 됩니다."),
+    );
+    top.append(t, E("span", "coach-pill", "● 서버에 학습 기록 저장"));
+    root.append(top);
+    let bar = E("div", "coach-toolbar", "");
+    for (const [l, name] of [
+      ["en", "🇺🇸 영어"],
+      ["zh", "🇨🇳 중국어"],
+    ])
+      bar.append(
+        button(
+          name,
+          () => {
+            lang = l;
+            load();
+          },
+          lang === l ? "selected" : "",
+        ),
+      );
+    let date = E("input", "", "");
+    date.type = "date";
+    date.value = selected;
+    date.setAttribute("aria-label", "숙제 날짜");
+    date.onchange = () => {
+      if (date.value) {
+        selected = date.value;
+        load();
+      }
+    };
+    bar.append(
+      date,
+      button("오늘", () => {
+        selected = today();
+        load();
+      }),
+    );
+    root.append(bar);
+    let msg = E("p", "coach-alert", "");
+    msg.id = "coach-message";
+    msg.setAttribute("role", "status");
+    msg.hidden = true;
+    root.append(msg);
+    let rhythm = E("div", "coach-rhythm", "");
+    rhythm.append(
+      E("span", "", "☀ 07:30 전날 복습 → 새 숙제"),
+      E("span", "", "☾ 19:00 당일 시험"),
+      E("span", "", "토·일 07:30 주간 전체 SHUFFLE"),
+      E("small", "", "한국 시간 · 정시 알림 예약은 아직 연결되지 않았습니다"),
+    );
+    root.append(rhythm);
+    let stats = E("div", "coach-stats", "");
+    for (const [v, label] of [
+      [data.stats.tested, "시험에서 맞힌 표현"],
+      [data.stats.retained, "서로 다른 날 정답 표현"],
+      [data.stats.attempts, "누적 시험 횟수"],
+    ]) {
+      let e = E("article", "", "");
+      e.append(E("strong", "", String(v)), E("span", "", label));
+      stats.append(e);
+    }
+    root.append(stats);
+    let intro = E("div", "coach-intro", "");
+    intro.append(
+      E("h2", "", data.weekend ? "주말, 한 주의 표현을 내 것으로" : "DAILY " + (lang === "en" ? "ENGLISH" : "CHINESE")),
+      E(
+        "p",
+        "",
+        data.weekend
+          ? lang === "en"
+            ? "100 VOCA + 50 IDIOM · 총 150문항"
+            : "100 VOCA + 25 IDIOM · 총 125문항"
+          : (lang === "en" ? "20 VOCA + 10 IDIOM" : "20 VOCA + 5 IDIOM") + " · 기초부터 조금씩 넓혀갑니다.",
+      ),
+    );
+    root.append(intro);
+    if (!data.available) {
+      root.append(E("div", "coach-alert", "이 날짜의 숙제는 오전 7시 30분에 공개됩니다."));
+    } else if (data.weekend) {
+      let panel = E("div", "coach-panel", "");
+      panel.append(
+        E("h2", "", "토·일 모두 다른 순서로 전체 복습"),
+        E("p", "", "그 주 월~금에 배정한 모든 표현을 섞습니다. 아직 공부하지 못한 평일 분량도 포함됩니다."),
+        button("주말 누적 시험 시작", () => startQuiz("weekend"), "primary"),
+      );
+      root.append(panel);
+    } else {
+      let flow = E("div", "coach-steps", "");
+      let rev = E("article", "coach-panel", "");
+      rev.append(
+        E("span", "eyebrow", "STEP 01 · REMEMBER"),
+        E("h2", "", "전날 표현 먼저 복습"),
+        E(
+          "p",
+          "",
+          data.previousDate
+            ? data.previousDate + "의 단어와 숙어 전체를 다시 확인합니다."
+            : "첫 수업입니다. 오늘은 새 숙제부터 시작하세요.",
+        ),
+      );
+      if (data.previousDate)
+        rev.append(
+          button(
+            data.reviewRequired ? "복습 시험 시작" : "✓ 복습 완료 · 다시 풀기",
+            () => startQuiz("review"),
+            data.reviewRequired ? "primary" : "",
+          ),
+        );
+      let evening = E("article", "coach-panel", "");
+      evening.append(
+        E("span", "eyebrow", "STEP 03 · RECALL"),
+        E("h2", "", "저녁 7시, 오늘의 테스트"),
+        E("p", "", "뜻 고르기 또는 표현 직접 쓰기로 기억을 확인하세요."),
+      );
+      let b = button("오늘의 시험 시작", () => startQuiz("evening"), "primary");
+      b.disabled = (selected === data.serverDate && data.serverTime < 1900) || data.reviewRequired;
+      evening.append(b);
+      flow.append(rev, evening);
+      root.append(flow);
+      if (data.reviewRequired)
+        root.append(
+          E(
+            "div",
+            "coach-alert",
+            "STEP 01 복습 시험을 끝내면 오늘의 새 표현이 열립니다. 정답률과 오답은 별도로 기록됩니다.",
+          ),
+        );
+      if (data.lesson) {
+        let title = E("div", "section-title", "");
+        title.append(
+          E("h2", "", "STEP 02 · 오늘의 새로운 표현"),
+          E("span", "", data.lesson.level + " · " + data.study.length + "/" + data.lesson.items.length + " 학습 확인"),
+        );
+        root.append(title);
+        root.append(button("▣ 휴대폰 한 화면 요약 · 이미지 저장", showSummary, "summary-open"));
+        let filter = E("div", "coach-filter", "");
+        filter.append(
+          E("span", "", "영어 /IPA/ · 중국어 병음 · 한국어 뜻"),
+          E("small", "", "🔊 브라우저 음성합성 · 클릭해서 듣기"),
+        );
+        root.append(filter);
+        let grid = E("div", "word-grid", "");
+        data.lesson.items.forEach((i, n) => grid.append(wordCard(i, n, true)));
+        root.append(grid);
+      } else if (data.unlocked) {
+        root.append(E("p", "coach-alert", "오늘 수업을 준비 중입니다. 예약 실행이 완료되면 새로고침해주세요."));
+      }
+    }
+    let review = E("section", "coach-panel extra-review", "");
+    review.append(
+      E("h2", "", "오답 · 3일 / 7일 / 30일 복습"),
+      E("p", "", "최근 오답을 먼저, 간격 복습 표현을 이어서 보여줍니다. 틀린 표현은 이후 시험에서 다시 확인합니다."),
+    );
+    if (data.extraReview.length) {
+      review.append(button("복습 표현 시험 보기", () => startQuiz("spaced"), "primary"));
+      review.append(
+        button("뜻 가리고 복습하기", () => {
+          review.classList.toggle("conceal");
+          review.querySelectorAll(".word-meaning").forEach((e) => (e.tabIndex = 0));
+        }),
+      );
+      let grid = E("div", "word-grid", "");
+      data.extraReview.forEach((i, n) => grid.append(wordCard(i, n, false)));
+      review.append(grid);
+    } else review.append(E("p", "sub", "시험을 마치면 오답과 간격 복습 표현이 여기에 모입니다."));
+    root.append(review);
+    let history = E("section", "coach-panel", "");
+    history.append(
+      E("h2", "", "나의 기억력 추적"),
+      E(
+        "p",
+        "",
+        "최근 시험 정답률 · 두 언어는 각각 기록합니다. 같은 날 반복 정답은 장기 기억 지표에 중복 계산하지 않습니다.",
+      ),
+    );
+    let chart = E("div", "score-chart", "");
+    for (const a of data.stats.recent) {
+      let c = E("div", "score-column", ""),
+        bar = E("div", "score-bar", "");
+      bar.style.height = Math.max(3, a.score) + "px";
+      c.append(
+        E("strong", "", a.score + "%"),
+        bar,
+        E("small", "", a.date.slice(5)),
+        E("small", "", { review: "복습", evening: "저녁", weekend: "주말", spaced: "간격" }[a.mode]),
+      );
+      chart.append(c);
+    }
+    if (!data.stats.recent.length) chart.append(E("p", "sub", "첫 시험부터 성장 기록이 시작됩니다."));
+    history.append(chart);
+    root.append(history);
+    let results = E("div", "coach-result-list", "");
+    data.results.forEach((a) => {
+      let b = button(
+        { review: "전날 복습", evening: "저녁 시험", weekend: "주말 시험", spaced: "간격 복습" }[a.mode] +
+          " · " +
+          a.correct +
+          "/" +
+          a.total +
+          " · " +
+          a.score +
+          "% → 오답 확인",
+        () => showResult(a),
+      );
+      results.append(b);
+    });
+    root.append(results);
+    let plan = E("div", "coach-panel roadmap", "");
+    plan.append(
+      E("h2", "", "1년, 기초에서 실전까지"),
+      E(
+        "p",
+        "",
+        "1–3개월: 일상 기초 → 4–6개월: 여행·사회생활 → 7–9개월: 비즈니스·협상 → 10–12개월: 시사·문화·깊이 있는 대화",
+      ),
+      E(
+        "p",
+        "",
+        "달력보다 기억한 정도를 우선합니다. 최근 저녁 시험 3회의 정답률이 85% 이상이면 조금씩 높이고, 60% 미만이면 기초를 보강합니다. 단계는 비공식 학습 기준입니다.",
+      ),
+      E(
+        "small",
+        "",
+        "월별 경로는 방향을 잡기 위한 목표이며 실제 난도는 성적에 맞춰 조절합니다. 신규 어휘는 평일, 주말에는 누적 복습합니다. 숙어에는 구동사·고정 표현과 중국어 일상 관용 표현이 포함됩니다.",
+      ),
+    );
+    root.append(plan);
+    let footer = E("div", "coach-footer", "");
+    footer.append(
+      E("span", "", "숙제·시험 결과는 서버에 저장됩니다. 기존 대시보드 기록은 현재 브라우저에 유지됩니다."),
+      button("수준 설정", profileForm),
+    );
+    root.append(footer);
+  }
+  function speak(i) {
+    if (!("speechSynthesis" in window)) {
+      alertBox("이 브라우저는 음성합성을 지원하지 않습니다. Chrome 또는 Safari에서 시도해주세요.");
+      return;
+    }
+    speechSynthesis.cancel();
+    let s = new SpeechSynthesisUtterance(i.term);
+    s.lang = lang === "en" ? "en-US" : "zh-CN";
+    let voices = speechSynthesis.getVoices();
+    s.voice =
+      voices.find((v) => v.lang === s.lang) ||
+      voices.find((v) => v.lang.startsWith(lang === "en" ? "en" : "zh")) ||
+      null;
+    s.rate = 0.85;
+    s.onerror = () => alertBox("음성을 재생하지 못했습니다. 기기에 영어·중국어 음성팩이 설치되어 있는지 확인해주세요.");
+    speechSynthesis.speak(s);
+  }
+  function wordCard(i, n, study) {
+    let card = E("article", "word-card", ""),
+      head = E("div", "word-top", "");
+    head.append(
+      E("span", "", String(n + 1).padStart(2, "0") + " · " + i.kind.toUpperCase()),
+      button("🔊", () => speak(i), "sound"),
+    );
+    head.lastChild.setAttribute("aria-label", i.term + " 발음 듣기");
+    card.append(
+      head,
+      E("h3", "", i.term),
+      E("p", "pronunciation", lang === "en" ? "/" + i.pronunciation + "/" : i.pronunciation),
+    );
+    let meaning = E("p", "word-meaning", i.meaning);
+    meaning.onclick = () => meaning.classList.toggle("reveal");
+    card.append(meaning);
+    if (i.example) card.append(E("p", "word-example", i.example));
+    if (i.exampleMeaning) card.append(E("p", "word-example", i.exampleMeaning));
+    if (study) {
+      let checked = data.study.includes(i.id),
+        b = button(
+          checked ? "✓ 학습 확인 완료" : "학습 확인",
+          () =>
+            action(async () => {
+              let r = await api("/api/study", { date: selected, lang, ids: [i.id] });
+              data.study = r.ids;
+              mirrorLegacy();
+              render();
+            }),
+          "learn-check",
+        );
+      b.disabled = checked;
+      card.append(b);
+    }
+    return card;
+  }
+  function mirrorLegacy() {
+    try {
+      let s = JSON.parse(localStorage.getItem("lingodaily-v1"));
+      if (!s?.plans) return;
+      for (const [kind, cat] of [
+        ["voca", 0],
+        ["idiom", 7],
+      ]) {
+        let id = "lisa-" + selected + "-" + lang + "-" + kind;
+        let total = data.lesson.items.filter((i) => i.kind === kind).length;
+        let value = data.lesson.items.filter((i) => i.kind === kind && data.study.includes(i.id)).length;
+        if (!s.plans.some((p) => p.id === id))
+          s.plans.push({
+            id,
+            lang,
+            cat,
+            title: "LISA DAILY " + kind.toUpperCase(),
+            target: total,
+            time: "07:30",
+            start: selected,
+            repeat: false,
+          });
+        s.records[selected] ??= {};
+        s.records[selected][id] = { value, minutes: 0 };
+      }
+      localStorage.setItem("lingodaily-v1", JSON.stringify(s));
+      window.dispatchEvent(new Event("lisa-records-updated"));
+    } catch {}
+  }
+  function dialog(title) {
+    let old = $("#coach-dialog");
+    if (old) old.remove();
+    let d = E("dialog", "coach-dialog", "");
+    d.id = "coach-dialog";
+    let h = E("div", "section-title", "");
+    h.append(
+      E("h2", "", title),
+      button("✕", () => d.close()),
+    );
+    h.lastChild.setAttribute("aria-label", "닫기");
+    d.append(h);
+    document.body.append(d);
+    d.addEventListener("close", () => {
+      if ("speechSynthesis" in window) speechSynthesis.cancel();
+    });
+    return d;
+  }
+  function shuffle(a) {
+    a = [...a];
+    for (let i = a.length - 1; i > 0; i--) {
+      let j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  async function startQuiz(mode) {
+    await action(async () => {
+      const q = await api(url("/api/quiz", mode));
+      if (!q.items.length) {
+        alertBox("복습할 이전 수업이 없습니다.");
+        return;
+      }
+      let d = dialog(
+        {
+          review: "전날 복습",
+          evening: "오늘의 저녁 시험",
+          weekend: "주말 전체 SHUFFLE",
+          spaced: "오답·간격 복습 시험",
+        }[mode],
+      );
+      d.append(
+        E(
+          "p",
+          "",
+          "총 " +
+            q.items.length +
+            "문항 · 중간에 닫아도 이 브라우저에서 이어서 풀 수 있습니다. 정답과 해설은 제출 후 공개됩니다.",
+        ),
+      );
+      for (const [format, label] of [
+        ["choice", "표현 보고 뜻 고르기"],
+        ["typing", "뜻 보고 표현 직접 쓰기"],
+      ])
+        d.append(
+          button(
+            label,
+            () => {
+              let key = ["lisa-quiz", selected, lang, mode, format].join(":"),
+                saved;
+              try {
+                saved = JSON.parse(localStorage.getItem(key));
+              } catch {}
+              let ids = new Set(q.items.map((i) => i.id));
+              let items =
+                saved?.items?.length === q.items.length && saved.items.every((i) => ids.has(i.id))
+                  ? saved.items.map((i) => q.items.find((x) => x.id === i.id))
+                  : shuffle(q.items);
+              quiz = {
+                items,
+                date: selected,
+                lang,
+                mode,
+                format,
+                key,
+                answers: saved?.answers || {},
+                index: saved?.index || 0,
+              };
+              d.close();
+              quizRender();
+            },
+            "quiz-mode",
+          ),
+        );
+      d.showModal();
+    });
+  }
+  function quizRender() {
+    let d = dialog("기억 꺼내기 · " + (quiz.format === "choice" ? "뜻 고르기" : "표현 쓰기")),
+      i = quiz.items[quiz.index];
+    d.append(
+      E(
+        "p",
+        "quiz-progress",
+        quiz.index + 1 + " / " + quiz.items.length + " · 답변 " + Object.keys(quiz.answers).length + "개",
+      ),
+    );
+    let progress = E("progress", "", "");
+    progress.max = quiz.items.length;
+    progress.value = Object.keys(quiz.answers).length;
+    progress.setAttribute("aria-label", "답변 진행률");
+    d.append(
+      progress,
+      E("span", "eyebrow", i.kind.toUpperCase()),
+      E("h3", "quiz-question", quiz.format === "choice" ? i.term : i.meaning),
+    );
+    if (quiz.format === "choice") {
+      let options = quiz.options?.[i.id];
+      quiz.options ??= {};
+      if (!options) {
+        options = shuffle([
+          i.meaning,
+          ...shuffle(
+            [...new Set(quiz.items.filter((x) => x.id !== i.id).map((x) => x.meaning))].filter((v) => v !== i.meaning),
+          ).slice(0, 3),
+        ]);
+        quiz.options[i.id] = options;
+      }
+      for (const v of options) {
+        let b = button(
+          v,
+          () => {
+            quiz.answers[i.id] = v;
+            persistQuiz();
+            quizRender();
+          },
+          "quiz-option" + (quiz.answers[i.id] === v ? " chosen" : ""),
+        );
+        b.setAttribute("aria-pressed", String(quiz.answers[i.id] === v));
+        d.append(b);
+      }
+    } else {
+      let label = E("label", "", "영어 표현 또는 중국어 한자를 입력하세요.");
+      label.htmlFor = "quiz-answer";
+      let input = E("input", "", "");
+      input.id = "quiz-answer";
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.value = quiz.answers[i.id] || "";
+      input.oninput = () => {
+        if (input.value.trim()) quiz.answers[i.id] = input.value;
+        else delete quiz.answers[i.id];
+        persistQuiz();
+      };
+      d.append(label, input, E("p", "sub", "영어는 대소문자·공백·구두점을 무시합니다. 중국어는 한자로 입력하세요."));
+    }
+    let controls = E("div", "quiz-controls", ""),
+      prev = button("이전", () => {
+        quiz.index--;
+        persistQuiz();
+        quizRender();
+      });
+    prev.disabled = !quiz.index;
+    controls.append(prev);
+    if (quiz.index < quiz.items.length - 1)
+      controls.append(
+        button(
+          "다음",
+          () => {
+            quiz.index++;
+            persistQuiz();
+            quizRender();
+          },
+          "primary",
+        ),
+      );
+    else
+      controls.append(
+        button(
+          "전체 답안 제출",
+          async () => {
+            let missing = quiz.items.findIndex((i) => !quiz.answers[i.id]);
+            if (missing >= 0) {
+              quiz.index = missing;
+              persistQuiz();
+              quizRender();
+              $("#quiz-message").textContent = "답하지 않은 문제를 먼저 풀어주세요.";
+              return;
+            }
+            let submit = controls.lastChild;
+            submit.disabled = true;
+            try {
+              let a = await api("/api/quiz/submit", {
+                date: quiz.date,
+                lang: quiz.lang,
+                mode: quiz.mode,
+                format: quiz.format,
+                answers: quiz.items.map((i) => ({ id: i.id, answer: quiz.answers[i.id] })),
+              });
+              localStorage.removeItem(quiz.key);
+              d.close();
+              await load();
+              showResult(a);
+            } catch (e) {
+              $("#quiz-message").textContent = e.message;
+              submit.disabled = false;
+            }
+          },
+          "primary",
+        ),
+      );
+    d.append(controls);
+    let msg = E("p", "coach-alert", "");
+    msg.id = "quiz-message";
+    msg.setAttribute("role", "status");
+    d.append(msg);
+    d.showModal();
+    if (quiz.format === "typing") $("#quiz-answer").focus();
+  }
+  function persistQuiz() {
+    localStorage.setItem(quiz.key, JSON.stringify(quiz));
+  }
+  function showResult(a) {
+    let d = dialog("시험 결과 · " + a.score + "%");
+    d.append(
+      E("p", "result-score", a.correct + " / " + a.total + " 정답"),
+      E(
+        "p",
+        "",
+        a.score >= 85
+          ? "잘 기억하고 있어요. 다음 수업에서 조금씩 범위를 넓혀갑니다."
+          : "오늘의 오답을 다시 듣고 확인해보세요. 다음 복습에서도 만나게 됩니다.",
+      ),
+    );
+    if (!a.wrongItems.length) d.append(E("p", "", "모두 맞혔습니다! 다른 날에도 기억하는지 다시 확인해요."));
+    for (const i of a.wrongItems) {
+      let c = wordCard(i, 0, false);
+      c.append(E("small", "wrong-answer", "내 답: " + i.answer));
+      d.append(c);
+    }
+    d.append(
+      button(
+        "확인하고 계속하기",
+        () => {
+          d.close();
+          load();
+        },
+        "primary",
+      ),
+    );
+    d.showModal();
+  }
+  function profileForm() {
+    let d = dialog("나의 시작 수준"),
+      form = E("form", "", "");
+    for (const l of ["en", "zh"]) {
+      let label = E("label", "", l === "en" ? "영어" : "중국어");
+      label.htmlFor = "profile-" + l;
+      let s = E("select", "", "");
+      s.id = "profile-" + l;
+      s.name = l;
+      for (const [v, t] of [
+        ["beginner", "기초 어휘부터 차근차근"],
+        ["basic", "기초는 알지만 자주 잊어요"],
+        ["intermediate", "중급 표현으로 넓히고 싶어요"],
+      ]) {
+        let o = E("option", "", t);
+        o.value = v;
+        s.append(o);
+      }
+      s.value = data.profile[l] || "beginner";
+      form.append(label, s);
+    }
+    form.append(
+      E("p", "sub", "자기 평가이며 공식 수준 진단이 아닙니다. 이미 배정된 수업은 유지하고 이후 수업부터 참고합니다."),
+    );
+    let b = E("button", "primary", "저장");
+    b.type = "submit";
+    form.append(b);
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      try {
+        await api("/api/profile", Object.fromEntries(new FormData(form)));
+        d.close();
+        load();
+      } catch (e) {
+        alert(e.message);
+      }
+    };
+    d.append(form);
+    d.showModal();
+  }
 
-function showSummary(){if(!data?.lesson)return;let lesson=data.lesson,summaryLang=lang,withPronunciation=false;let d=dialog('오늘의 포켓 단어장');d.classList.add('summary-dialog');let top=d.firstChild;top.append(E('span','summary-date',selected+' · '+(summaryLang==='en'?'ENGLISH 20 + 10':'CHINESE 20 + 5')));let tools=E('div','summary-tools',''),note=E('span','','단어·숙어 + 뜻 · 오프라인으로 꺼내 보세요'),label=E('label','','발음 표기'),check=E('input','','');check.type='checkbox';check.setAttribute('aria-label','요약에 발음 표기 포함');check.onchange=()=>{withPronunciation=check.checked;paint()};label.prepend(check);tools.append(note,label,button('이미지 저장 ↓',()=>downloadSummary(lesson,summaryLang,withPronunciation),'primary'));d.append(tools);let grid=E('div','summary-grid','');grid.style.setProperty('--summary-rows',Math.ceil(lesson.items.length/2));d.append(grid);let foot=E('div','summary-foot','lingodaily · LISA | V 단어 / I 숙어 · 화면 캡처 또는 이미지 저장으로 하루 종일 복습');d.append(foot);function paint(){grid.replaceChildren();grid.classList.toggle('with-pronunciation',withPronunciation);lesson.items.forEach((i,n)=>{let c=E('div','summary-word',''),t=E('strong','',String(n+1).padStart(2,'0')+' '+i.term);t.prepend(E('small',i.kind==='idiom'?'summary-idiom':'',i.kind==='idiom'?'I ':'V '));c.append(t);if(withPronunciation)c.append(E('span','summary-pron',summaryLang==='en'?'/'+i.pronunciation+'/':i.pronunciation));c.append(E('span','summary-meaning',i.meaning));grid.append(c)})}paint();d.showModal()}
-function downloadSummary(lesson,l,pronunciation){let canvas=document.createElement('canvas');canvas.width=1080;canvas.height=1920;let c=canvas.getContext('2d');if(!c){alert('이 브라우저에서 이미지 저장을 지원하지 않습니다. 화면 캡처로 저장해주세요.');return}c.fillStyle='#f4f7ef';c.fillRect(0,0,1080,1920);c.fillStyle='#2b6549';c.font='bold 46px sans-serif';c.fillText('Lingo Daily · 포켓 단어장',48,80);c.font='26px sans-serif';c.fillText(lesson.date+'  |  '+(l==='en'?'ENGLISH · 20 VOCA + 10 IDIOM':'CHINESE · 20 VOCA + 5 IDIOM'),48,127);c.font='22px sans-serif';c.fillStyle='#7f9476';c.fillText('기초부터, 매일 한 걸음 더. — LISA',48,167);let rows=Math.ceil(lesson.items.length/2),rowH=1640/rows;
-function lines(text,x,y,width,size,maxLines,color){c.font=size+'px sans-serif';c.fillStyle=color;let chunks=[],line='';for(const ch of text){if(c.measureText(line+ch).width>width&&line){chunks.push(line);line=ch}else line+=ch}if(line)chunks.push(line);chunks.slice(0,maxLines).forEach((s,n)=>c.fillText(s,x,y+n*(size+4)));return Math.min(chunks.length,maxLines)*(size+4)}
-lesson.items.forEach((i,n)=>{let col=Math.floor(n/rows),row=n%rows,x=48+col*516,y=210+row*rowH;c.fillStyle='#fff';c.fillRect(x-8,y-17,492,rowH-7);let h=lines(String(n+1).padStart(2,'0')+' '+(i.kind==='idiom'?'I':'V')+'  '+i.term,x+4,y+15,465,27,2,'#2b6549');let cursor=y+15+h;if(pronunciation){cursor+=lines(l==='en'?'/'+i.pronunciation+'/':i.pronunciation,x+4,cursor,465,19,1,'#899a7d')}lines(i.meaning,x+4,cursor,465,23,pronunciation?2:2,'#50684b')});c.fillStyle='#819476';c.font='21px sans-serif';c.fillText('V 단어 · I 숙어   |   뜻을 가리고 떠올린 뒤 확인해보세요.',48,1900);canvas.toBlob(blob=>{if(!blob)return;let url=URL.createObjectURL(blob),a=E('a','','');a.href=url;a.download='Lingo-Daily-'+lesson.date+'-'+l+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000)},'image/png')}
+  function showSummary() {
+    if (!data?.lesson) return;
+    let lesson = data.lesson,
+      summaryLang = lang,
+      withPronunciation = false;
+    let d = dialog("오늘의 포켓 단어장");
+    d.classList.add("summary-dialog");
+    let top = d.firstChild;
+    top.append(
+      E("span", "summary-date", selected + " · " + (summaryLang === "en" ? "ENGLISH 20 + 10" : "CHINESE 20 + 5")),
+    );
+    let tools = E("div", "summary-tools", ""),
+      note = E("span", "", "단어·숙어 + 뜻 · 오프라인으로 꺼내 보세요"),
+      label = E("label", "", "발음 표기"),
+      check = E("input", "", "");
+    check.type = "checkbox";
+    check.setAttribute("aria-label", "요약에 발음 표기 포함");
+    check.onchange = () => {
+      withPronunciation = check.checked;
+      paint();
+    };
+    label.prepend(check);
+    tools.append(
+      note,
+      label,
+      button("이미지 저장 ↓", () => downloadSummary(lesson, summaryLang, withPronunciation), "primary"),
+    );
+    d.append(tools);
+    let grid = E("div", "summary-grid", "");
+    grid.style.setProperty("--summary-rows", Math.ceil(lesson.items.length / 2));
+    d.append(grid);
+    let foot = E(
+      "div",
+      "summary-foot",
+      "lingodaily · LISA | V 단어 / I 숙어 · 화면 캡처 또는 이미지 저장으로 하루 종일 복습",
+    );
+    d.append(foot);
+    function paint() {
+      grid.replaceChildren();
+      grid.classList.toggle("with-pronunciation", withPronunciation);
+      lesson.items.forEach((i, n) => {
+        let c = E("div", "summary-word", ""),
+          t = E("strong", "", String(n + 1).padStart(2, "0") + " " + i.term);
+        t.prepend(E("small", i.kind === "idiom" ? "summary-idiom" : "", i.kind === "idiom" ? "I " : "V "));
+        c.append(t);
+        if (withPronunciation)
+          c.append(E("span", "summary-pron", summaryLang === "en" ? "/" + i.pronunciation + "/" : i.pronunciation));
+        c.append(E("span", "summary-meaning", i.meaning));
+        grid.append(c);
+      });
+    }
+    paint();
+    d.showModal();
+  }
+  function downloadSummary(lesson, l, pronunciation) {
+    let canvas = document.createElement("canvas");
+    canvas.width = 1080;
+    canvas.height = 1920;
+    let c = canvas.getContext("2d");
+    if (!c) {
+      alert("이 브라우저에서 이미지 저장을 지원하지 않습니다. 화면 캡처로 저장해주세요.");
+      return;
+    }
+    c.fillStyle = "#f4f7ef";
+    c.fillRect(0, 0, 1080, 1920);
+    c.fillStyle = "#2b6549";
+    c.font = "bold 46px sans-serif";
+    c.fillText("Lingo Daily · 포켓 단어장", 48, 80);
+    c.font = "26px sans-serif";
+    c.fillText(
+      lesson.date + "  |  " + (l === "en" ? "ENGLISH · 20 VOCA + 10 IDIOM" : "CHINESE · 20 VOCA + 5 IDIOM"),
+      48,
+      127,
+    );
+    c.font = "22px sans-serif";
+    c.fillStyle = "#7f9476";
+    c.fillText("기초부터, 매일 한 걸음 더. — LISA", 48, 167);
+    let rows = Math.ceil(lesson.items.length / 2),
+      rowH = 1640 / rows;
+    function lines(text, x, y, width, size, maxLines, color) {
+      c.font = size + "px sans-serif";
+      c.fillStyle = color;
+      let chunks = [],
+        line = "";
+      for (const ch of text) {
+        if (c.measureText(line + ch).width > width && line) {
+          chunks.push(line);
+          line = ch;
+        } else line += ch;
+      }
+      if (line) chunks.push(line);
+      chunks.slice(0, maxLines).forEach((s, n) => c.fillText(s, x, y + n * (size + 4)));
+      return Math.min(chunks.length, maxLines) * (size + 4);
+    }
+    lesson.items.forEach((i, n) => {
+      let col = Math.floor(n / rows),
+        row = n % rows,
+        x = 48 + col * 516,
+        y = 210 + row * rowH;
+      c.fillStyle = "#fff";
+      c.fillRect(x - 8, y - 17, 492, rowH - 7);
+      let h = lines(
+        String(n + 1).padStart(2, "0") + " " + (i.kind === "idiom" ? "I" : "V") + "  " + i.term,
+        x + 4,
+        y + 15,
+        465,
+        27,
+        2,
+        "#2b6549",
+      );
+      let cursor = y + 15 + h;
+      if (pronunciation) {
+        cursor += lines(
+          l === "en" ? "/" + i.pronunciation + "/" : i.pronunciation,
+          x + 4,
+          cursor,
+          465,
+          19,
+          1,
+          "#899a7d",
+        );
+      }
+      lines(i.meaning, x + 4, cursor, 465, 23, pronunciation ? 2 : 2, "#50684b");
+    });
+    c.fillStyle = "#819476";
+    c.font = "21px sans-serif";
+    c.fillText("V 단어 · I 숙어   |   뜻을 가리고 떠올린 뒤 확인해보세요.", 48, 1900);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      let url = URL.createObjectURL(blob),
+        a = E("a", "", "");
+      a.href = url;
+      a.download = "Lingo-Daily-" + lesson.date + "-" + l + ".png";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    }, "image/png");
+  }
 
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active&&!$('#coach-dialog')?.open)load()});setInterval(()=>{if(active&&!$('#coach-dialog')?.open)load()},60000);toggle(true);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && active && !$("#coach-dialog")?.open) load();
+  });
+  setInterval(() => {
+    if (active && !$("#coach-dialog")?.open) load();
+  }, 60000);
+  toggle(true);
 })();
