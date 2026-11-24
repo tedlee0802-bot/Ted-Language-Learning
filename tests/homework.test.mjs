@@ -55,7 +55,7 @@ async function submit(e, d, mode, items, wrong = false) {
 test("first week has exact full counts, Korean meanings and pronunciation; seed is idempotent", async () => {
   let e = await seeded(),
     c = await req(e, "/api/coach/context");
-  assert.equal(c.data.lessons.length, 10);
+  assert.equal(c.data.lessons.length, 30); // 3 levels x 5 weekdays x 2 languages
   for (const l of c.data.lessons) {
     validateLesson(l);
     assert.equal(new Set(l.items.map((i) => i.id)).size, l.items.length);
@@ -112,7 +112,7 @@ test("server rejects cross-origin writes and duplicate new vocabulary; study can
     );
   assert.equal(r.status, 403);
   let c = await req(e, "/api/coach/context"),
-    l = { ...c.data.lessons[0], date: "2026-10-26" };
+    l = { ...c.data.lessons.find((x) => x.lang === "en" && x.track === "basic"), date: "2026-10-26" };
   assert.equal((await req(e, "/api/coach/lesson", l)).status, 400);
   let study = await req(e, "/api/study", { date: "2026-10-20", lang: "en", ids: [] }, "2026-10-20T08:00:00");
   assert.equal(study.status, 400);

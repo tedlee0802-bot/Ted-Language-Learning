@@ -144,7 +144,10 @@ test("only the owner manages profiles; anyone can change their own PIN; logout e
   assert.equal((await req(e, "/api/auth/login", { body: { id: kidId, pin: "8642" } })).status, 200);
   assert.equal((await req(e, "/api/auth/pin", { cookie: owner, body: { id: kidId, pin: "5555" } })).status, 200);
   assert.equal((await req(e, "/api/auth/login", { body: { id: kidId, pin: "5555" } })).status, 200);
-  assert.equal((await req(e, "/api/auth/profiles", { cookie: owner, body: { name: "Erin", pin: "1234" } })).status, 400);
+  assert.equal(
+    (await req(e, "/api/auth/profiles", { cookie: owner, body: { name: "Erin", pin: "1234" } })).status,
+    400,
+  );
   assert.equal((await req(e, "/api/auth/logout", { cookie: kid, body: {} })).status, 200);
   assert.equal((await req(e, "/api/homework", { cookie: kid })).status, 401);
   const removed = await req(e, "/api/auth/remove", { cookie: owner, body: { id: kidId } });

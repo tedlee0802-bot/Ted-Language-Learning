@@ -50,6 +50,140 @@
   font-size: 14px;
 }
 
+/* ---------------------------------------------------------------- levels */
+.level-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  min-height: 36px;
+  padding: 4px 10px 4px 14px;
+  border-radius: 999px;
+  border-color: var(--line-2);
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.level-chip b {
+  color: var(--accent-strong);
+}
+.level-chip svg {
+  width: 16px;
+  height: 16px;
+}
+.level-intro {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+.level-intro strong {
+  display: block;
+  font-size: 17px;
+}
+.level-intro span {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.level-intro .btn-row {
+  margin: 0;
+}
+.level-form .sub {
+  margin-bottom: 6px;
+}
+.level-set {
+  border: 0;
+  padding: 0;
+  margin: 18px 0 0;
+  display: grid;
+  gap: 8px;
+}
+.level-set legend {
+  font-weight: 800;
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+.level-option {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 12px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  cursor: pointer;
+  color: var(--ink) !important;
+}
+.level-option:has(input:checked) {
+  border: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+.level-option input {
+  width: 20px;
+  height: 20px;
+  min-height: 0;
+  margin: 0;
+  accent-color: var(--accent);
+  flex: none;
+}
+.level-option span {
+  display: grid;
+  flex: 1;
+}
+.level-option b {
+  font-size: 16px;
+}
+.level-option small {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.level-rec {
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 99px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.level-test {
+  justify-self: start;
+  margin-top: 2px;
+}
+.placement-pron {
+  color: var(--ink-3) !important;
+  margin: -12px 0 16px !important;
+  font-size: 16px;
+}
+.quiz-option.dont-know {
+  color: var(--ink-3);
+  border-style: dashed;
+  text-align: center;
+}
+.placement-bars {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+.placement-bar {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+.placement-bar .track {
+  margin: 0;
+  height: 10px;
+}
+.placement-bar b {
+  text-align: right;
+}
+
 /* ---------------------------------------------------------------- lead: focus card + steps */
 .hw-lead {
   display: grid;

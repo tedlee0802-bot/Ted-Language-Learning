@@ -4,12 +4,22 @@ import { createHash } from "node:crypto";
 const root = new URL("../", import.meta.url),
   read = (p) => readFile(new URL(p, root), "utf8");
 
-// Inline the seed data so the Worker is a single dependency-free module.
-let server = await read("worker/server.mjs"),
-  seed = await read("worker/seed-data.mjs");
-const seedImport = /^import\s*\{\s*SEED\s*\}\s*from\s*["']\.\/seed-data\.mjs["'];?\s*$/m;
-if (!seedImport.test(server)) throw Error("seed-data import not found in worker/server.mjs");
-server = server.replace(seedImport, () => seed.replace("export const SEED", "const SEED"));
+// Inline the worker's local data modules (seed-data.mjs, levels-data.mjs) so the Worker is a single
+// dependency-free module. Each module runs in its own function scope so helper names cannot clash.
+let server = await read("worker/server.mjs");
+const localImport = /^import\s*\{([^}]*)\}\s*from\s*["']\.\/([\w-]+\.mjs)["'];?\s*$/gm;
+const imports = [...server.matchAll(localImport)];
+if (!imports.some((m) => m[2] === "seed-data.mjs")) throw Error("seed-data import not found in worker/server.mjs");
+for (const [line, names, file] of imports) {
+  const body = (await read("worker/" + file)).replace(/^export\s+const\s+/gm, "const ");
+  if (/^\s*(import|export)\b/m.test(body)) throw Error(file + " must only use `export const`");
+  const list = names
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean)
+    .join(", ");
+  server = server.replace(line, () => `const { ${list} } = (() => {\n${body}\nreturn { ${list} };\n})();`);
+}
 
 // Every file under web/ (recursively) is served at the same path. Text files are embedded as
 // strings, binary files (icons) as base64.

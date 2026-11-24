@@ -104,6 +104,19 @@ window.LD.ready.then(() => {
       busy = false;
     }
   }
+  const flagKey = (k) => "ld-flag:" + (window.LD.user?.id || "me") + ":" + k;
+  const dismissed = (k) => {
+    try {
+      return localStorage.getItem(flagKey(k)) === "1";
+    } catch {
+      return false;
+    }
+  };
+  const dismiss = (k) => {
+    try {
+      localStorage.setItem(flagKey(k), "1");
+    } catch {}
+  };
   const url = (path, mode) => path + "?date=" + selected + "&lang=" + lang + (mode ? "&mode=" + mode : "");
   async function load() {
     root.setAttribute("aria-busy", "true");
@@ -189,6 +202,10 @@ window.LD.ready.then(() => {
           "today",
         ),
       );
+    const chip = button("", () => profileForm(), "level-chip");
+    chip.append(E("span", "", LANG_NAME[lang] + " 레벨"), E("b", "", data.trackName), icon("right"));
+    chip.setAttribute("aria-label", LANG_NAME[lang] + " 레벨 " + data.trackName + " · 바꾸기");
+    t.append(chip);
     top.append(t, nav);
     return top;
   }
@@ -316,7 +333,7 @@ window.LD.ready.then(() => {
   }
   function flashcard(box) {
     const items = data.lesson.items,
-      key = selected + ":" + lang;
+      key = selected + ":" + lang + ":" + data.track;
     if (card.key !== key) {
       const first = items.findIndex((i) => !data.study.includes(i.id));
       card = { key, index: first < 0 ? 0 : first, revealed: false };
@@ -410,6 +427,29 @@ window.LD.ready.then(() => {
     msg.hidden = true;
     root.append(msg);
 
+    if (!data.profile.chosen && !dismissed("level-intro")) {
+      const intro = E("div", "level-intro", ""),
+        txt = E("div", "", "");
+      txt.append(
+        E("strong", "", "내 레벨을 정해 보세요"),
+        E("span", "", "기초·중급·고급 중 내 수준의 수업을 받습니다. 5분 레벨 테스트로 추천 레벨을 알려드려요."),
+      );
+      const acts = E("div", "btn-row", "");
+      acts.append(
+        button("레벨 테스트", () => startPlacement(lang), "primary"),
+        button("직접 고르기", () => profileForm()),
+        button(
+          "나중에",
+          () => {
+            dismiss("level-intro");
+            intro.remove();
+          },
+          "link",
+        ),
+      );
+      intro.append(txt, acts);
+      root.append(intro);
+    }
     const lead = E("div", "hw-lead", "");
     lead.append(focusCard(), steps());
     root.append(lead);
@@ -553,7 +593,7 @@ window.LD.ready.then(() => {
         "",
         "숙제·시험 결과는 서버에 사람별로 저장됩니다. 한국 시간 기준 · 정시 알림은 아직 연결되지 않았습니다.",
       ),
-      button("수준 설정", profileForm),
+      button("레벨 설정", () => profileForm()),
     );
     root.append(footer);
   }
@@ -883,44 +923,171 @@ window.LD.ready.then(() => {
     );
     d.showModal();
   }
-  function profileForm() {
-    let d = dialog("나의 시작 수준"),
-      form = E("form", "", "");
-    for (const l of ["en", "zh"]) {
-      let label = E("label", "", l === "en" ? "영어" : "중국어");
-      label.htmlFor = "profile-" + l;
-      let s = E("select", "", "");
-      s.id = "profile-" + l;
-      s.name = l;
-      for (const [v, t] of [
-        ["beginner", "기초 어휘부터 차근차근"],
-        ["basic", "기초는 알지만 자주 잊어요"],
-        ["intermediate", "중급 표현으로 넓히고 싶어요"],
-      ]) {
-        let o = E("option", "", t);
-        o.value = v;
-        s.append(o);
-      }
-      s.value = data.profile[l] || "beginner";
-      form.append(label, s);
-    }
+  // ------------------------------------------------------------------ levels
+  const LEVELS = [
+    ["basic", "기초", "일상 핵심 어휘부터 · 처음 시작하거나 기초를 다질 때"],
+    ["intermediate", "중급", "여행·사회생활·업무 기본 표현 · 기초 단어는 대부분 알 때"],
+    ["advanced", "고급", "비즈니스·시사·뉘앙스 있는 표현 · 뉴스나 회의를 어느 정도 따라갈 때"],
+  ];
+  const LEVEL_NAME = Object.fromEntries(LEVELS.map(([v, n]) => [v, n]));
+  const LANG_NAME = { en: "영어", zh: "중국어" };
+  // Opens the level picker. `preset` pre-selects a level for one language (e.g. a test recommendation).
+  function profileForm(preset = {}) {
+    let d = dialog("학습 레벨"),
+      form = E("form", "level-form", "");
     form.append(
-      E("p", "sub", "자기 평가이며 공식 수준 진단이 아닙니다. 이미 배정된 수업은 유지하고 이후 수업부터 참고합니다."),
+      E("p", "sub", "레벨마다 매일 받는 수업이 다릅니다. 바꿔도 지금까지의 진도와 시험 기록은 그대로 남습니다."),
     );
+    for (const l of ["en", "zh"]) {
+      const box = E("fieldset", "level-set", ""),
+        legend = E("legend", "", LANG_NAME[l]);
+      box.append(legend);
+      const rec = preset.recommended?.[l] || (l === lang && data.placement?.recommended);
+      for (const [v, name, note] of LEVELS) {
+        const opt = E("label", "level-option", ""),
+          input = E("input", "", "");
+        input.type = "radio";
+        input.name = l;
+        input.value = v;
+        input.checked = (preset[l] || data.profile[l] || "basic") === v;
+        const text = E("span", "", "");
+        text.append(E("b", "", name), E("small", "", note));
+        opt.append(input, text);
+        if (rec === v) opt.append(E("em", "level-rec", "테스트 추천"));
+        box.append(opt);
+      }
+      box.append(
+        button(
+          "레벨 테스트 보기 · 24문항",
+          () => {
+            d.close();
+            startPlacement(l);
+          },
+          "ghost level-test",
+        ),
+      );
+      form.append(box);
+    }
     let b = E("button", "primary", "저장");
     b.type = "submit";
-    form.append(b);
+    const err = E("p", "form-error", "");
+    form.append(err, b);
     form.onsubmit = async (e) => {
       e.preventDefault();
       try {
         await api("/api/profile", Object.fromEntries(new FormData(form)));
         d.close();
+        card.key = "";
         load();
-      } catch (e) {
-        alert(e.message);
+      } catch (x) {
+        err.textContent = x.message;
       }
     };
     d.append(form);
+    d.showModal();
+  }
+  async function startPlacement(l) {
+    await action(async () => {
+      const t = await api("/api/placement?lang=" + l);
+      const state = { l, items: t.items, index: 0, answers: {} };
+      placementRender(state);
+    });
+  }
+  function placementRender(st) {
+    const i = st.items[st.index],
+      d = dialog("레벨 테스트 · " + LANG_NAME[st.l]);
+    d.classList.add("placement-dialog");
+    d.append(
+      E(
+        "p",
+        "quiz-progress",
+        st.index + 1 + " / " + st.items.length + " · 뜻을 고르세요. 모르면 '모르겠어요'를 누르세요.",
+      ),
+    );
+    const progress = E("progress", "", "");
+    progress.max = st.items.length;
+    progress.value = st.index;
+    d.append(progress);
+    const q = E("h3", "quiz-question", i.term);
+    q.lang = st.l === "en" ? "en" : "zh-CN";
+    d.append(q, E("p", "placement-pron", st.l === "en" ? "/" + i.pronunciation + "/" : i.pronunciation));
+    const pick = async (v) => {
+      st.answers[i.id] = v;
+      if (st.index < st.items.length - 1) {
+        st.index++;
+        placementRender(st);
+        return;
+      }
+      d.querySelectorAll("button").forEach((b) => (b.disabled = true));
+      try {
+        const r = await api("/api/placement/submit", {
+          lang: st.l,
+          answers: st.items.map((x) => ({ id: x.id, answer: st.answers[x.id] ?? "" })),
+        });
+        placementResult(st.l, r);
+      } catch (x) {
+        d.append(E("p", "coach-alert", x.message));
+      }
+    };
+    for (const v of i.options) {
+      const b = button(v, () => pick(v), "quiz-option" + (st.answers[i.id] === v ? " chosen" : ""));
+      d.append(b);
+    }
+    d.append(button("모르겠어요", () => pick(""), "quiz-option dont-know"));
+    const controls = E("div", "quiz-controls", ""),
+      prev = button("이전", () => {
+        st.index--;
+        placementRender(st);
+      });
+    prev.disabled = !st.index;
+    controls.append(prev);
+    d.append(controls);
+    d.showModal();
+  }
+  function placementResult(l, r) {
+    const d = dialog("레벨 테스트 결과");
+    d.append(E("p", "result-score", "추천 레벨 · " + LEVEL_NAME[r.recommended]));
+    const bars = E("div", "placement-bars", "");
+    for (const [v, name] of LEVELS) {
+      const b = r.bands[v],
+        row = E("div", "placement-bar", ""),
+        track = E("div", "track", ""),
+        fill = E("i", "", "");
+      fill.style.width = (b.total ? (b.correct / b.total) * 100 : 0) + "%";
+      track.append(fill);
+      row.append(E("span", "", name + " 단어"), track, E("b", "", b.correct + " / " + b.total));
+      bars.append(row);
+    }
+    d.append(
+      bars,
+      E(
+        "p",
+        "sub",
+        "각 단계에서 8문제 중 6문제 이상 맞히면 그 단계를 통과한 것으로 봅니다. 참고용 추천이며, 레벨은 직접 바꿀 수 있습니다.",
+      ),
+    );
+    const row = E("div", "btn-row", "");
+    row.append(
+      button(
+        LEVEL_NAME[r.recommended] + "으로 설정",
+        async () => {
+          try {
+            await api("/api/profile", { ...data.profile, chosen: undefined, [l]: r.recommended });
+            d.close();
+            card.key = "";
+            load();
+          } catch (x) {
+            d.append(E("p", "coach-alert", x.message));
+          }
+        },
+        "primary",
+      ),
+      button("직접 고르기", () => {
+        d.close();
+        profileForm({ [l]: r.recommended, recommended: { [l]: r.recommended } });
+      }),
+    );
+    d.append(row);
     d.showModal();
   }
 

@@ -268,9 +268,13 @@
     }
     const app = section(d, "휴대폰 앱", "홈 화면에 설치하면 앱처럼 바로 열 수 있습니다.");
     app.append(action("앱 설치 방법", () => openInstall(), "primary"));
-    const lv = section(d, "학습 수준", "언어별 시작 수준을 고르면 이후 수업 난도에 참고합니다.");
+    const lv = section(
+      d,
+      "학습 레벨",
+      "영어·중국어마다 기초·중급·고급 중 내 수준의 수업을 받습니다. 레벨 테스트로 추천을 받을 수도 있어요.",
+    );
     lv.append(
-      action("수준 설정", () => {
+      action("레벨 테스트 · 레벨 고르기", () => {
         d.close();
         window.dispatchEvent(new Event("ld-open-level"));
       }),

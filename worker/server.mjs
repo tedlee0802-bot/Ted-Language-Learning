@@ -1,4 +1,5 @@
 import { SEED } from "./seed-data.mjs";
+import { TRACK_SEED, PLACEMENT } from "./levels-data.mjs";
 export const kdate = (now = new Date()) =>
   new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -37,7 +38,18 @@ async function keys(env, prefix) {
   } while (cursor);
   return out;
 }
-const lessonKey = (d, l) => `lessons/${d}/${l}.json`;
+// Lesson tracks (levels). "basic" keeps the original keys; other tracks get a suffix.
+export const TRACKS = ["basic", "intermediate", "advanced"];
+const TRACK_NAMES = { basic: "기초", intermediate: "중급", advanced: "고급" };
+const trackOk = (t) => TRACKS.includes(t);
+const lessonSuffix = (l, t = "basic") => (t === "basic" ? `${l}.json` : `${l}-${t}.json`);
+const lessonKey = (d, l, t = "basic") => `lessons/${d}/${lessonSuffix(l, t)}`;
+// Older profiles stored a self-assessment (beginner/basic/intermediate); map it onto the tracks.
+function trackOf(profile, l) {
+  const v = profile?.[l];
+  if (trackOk(v) && profile?.v === 2) return v;
+  return v === "intermediate" ? "intermediate" : "basic";
+}
 const itemId = (l, k, t) => `${l}:${k}:${normal(t)}`;
 export function validateLesson(x) {
   if (
@@ -46,9 +58,11 @@ export function validateLesson(x) {
     !validDate(x.date) ||
     ![1, 2, 3, 4, 5].includes(weekday(x.date)) ||
     typeof x.level !== "string" ||
-    !Array.isArray(x.items)
+    !Array.isArray(x.items) ||
+    (x.track !== undefined && !trackOk(x.track))
   )
     throw Error("유효한 평일·언어·수준·문항을 입력하세요.");
+  x.track = x.track || "basic";
   let seen = new Set();
   let counts = { voca: 0, idiom: 0 };
   for (const i of x.items) {
@@ -69,32 +83,38 @@ export function validateLesson(x) {
   return x;
 }
 async function seed(env) {
-  for (let n = 0; n < 5; n++)
-    for (const lang of ["en", "zh"]) {
-      let d = shift("2026-10-19", n),
-        key = lessonKey(d, lang);
-      if (!(await read(env, key))) {
-        let v = SEED[lang],
-          m = lang === "en" ? 10 : 5;
-        await write(
-          env,
-          key,
-          validateLesson({
-            lang,
-            date: d,
-            level: "기초 1 · 일상 핵심 표현",
-            source: "LISA 기초 커리큘럼",
-            items: [...v.voca.slice(n * 20, n * 20 + 20), ...v.idiom.slice(n * m, n * m + m)],
-          }),
-        );
+  const weeks = { basic: { en: SEED.en, zh: SEED.zh } };
+  for (const t of ["intermediate", "advanced"]) weeks[t] = { en: TRACK_SEED.en[t], zh: TRACK_SEED.zh[t] };
+  for (const track of TRACKS)
+    for (let n = 0; n < 5; n++)
+      for (const lang of ["en", "zh"]) {
+        let d = shift("2026-10-19", n),
+          key = lessonKey(d, lang, track);
+        if (!(await read(env, key))) {
+          let v = weeks[track][lang],
+            m = lang === "en" ? 10 : 5;
+          await write(
+            env,
+            key,
+            validateLesson({
+              lang,
+              date: d,
+              track,
+              level: v.level || "기초 1 · 일상 핵심 표현",
+              source: "LISA " + TRACK_NAMES[track] + " 커리큘럼",
+              items: [...v.voca.slice(n * 20, n * 20 + 20), ...v.idiom.slice(n * m, n * m + m)].map((i) => ({ ...i })),
+            }),
+          );
+        }
       }
-    }
 }
 async function attempts(env, d, l, mode, p = "") {
   return read(env, `${p}results/${d}/${l}/${mode}.json`, []);
 }
-async function previous(env, d, l) {
-  let all = (await keys(env, "lessons/")).filter((k) => k.endsWith("/" + l + ".json") && k.slice(8, 18) < d).sort();
+async function previous(env, d, l, t = "basic") {
+  let all = (await keys(env, "lessons/"))
+    .filter((k) => k.endsWith("/" + lessonSuffix(l, t)) && k.slice(8, 18) < d)
+    .sort();
   return all.length ? read(env, all.at(-1)) : null;
 }
 function timeOf(now) {
@@ -107,40 +127,40 @@ function timeOf(now) {
     .format(now)
     .replace(":", "");
 }
-export async function quizItems(env, d, l, mode, now, p = "") {
+export async function quizItems(env, d, l, mode, now, p = "", t = "basic") {
   let today = kdate(now),
     weekend = [0, 6].includes(weekday(d));
   if (d > today || (d === today && timeOf(now) < 730)) throw Error("오전 7시 30분에 공개됩니다.");
   if (mode === "review") {
     if (weekend) throw Error("주말에는 누적 시험을 이용하세요.");
-    let prev = await previous(env, d, l);
+    let prev = await previous(env, d, l, t);
     return prev?.items || [];
   }
   if (mode === "weekend") {
     if (!weekend) throw Error("주말 시험은 토요일·일요일에 진행합니다.");
     let items = [];
     for (let n = 0; n < 5; n++) {
-      let lesson = await read(env, lessonKey(shift(monday(d), n), l));
+      let lesson = await read(env, lessonKey(shift(monday(d), n), l, t));
       if (!lesson) throw Error("주간 수업이 아직 준비되지 않았습니다. 빠진 수업을 준비한 뒤 다시 시도하세요.");
       items.push(...lesson.items);
     }
     return items;
   }
   if (mode === "spaced") {
-    return extraItems(env, d, l, p);
+    return extraItems(env, d, l, p, t);
   }
   if (mode === "evening") {
     if (weekend) throw Error("주말에는 누적 시험을 이용하세요.");
     if (d === today && timeOf(now) < 1900) throw Error("저녁 시험은 오후 7시에 열립니다.");
-    let prev = await previous(env, d, l);
+    let prev = await previous(env, d, l, t);
     if (prev && !(await attempts(env, d, l, "review", p)).length) throw Error("전날 복습 시험을 먼저 마쳐주세요.");
-    let lesson = await read(env, lessonKey(d, l));
+    let lesson = await read(env, lessonKey(d, l, t));
     if (!lesson) throw Error("오늘 수업이 아직 준비되지 않았습니다.");
     return lesson.items;
   }
   throw Error("알 수 없는 시험 종류");
 }
-async function extraItems(env, d, l, p = "") {
+async function extraItems(env, d, l, p = "", t = "basic") {
   let personal = (await history(env, p)).filter((a) => a.lang === l && a.date <= d),
     last = new Map();
   for (const a of personal) {
@@ -150,7 +170,7 @@ async function extraItems(env, d, l, p = "") {
   let incorrect = [...last.values()].filter((v) => !v.correct).map((v) => v.item),
     due = [];
   for (const n of [3, 7, 30]) {
-    let old = await read(env, lessonKey(shift(d, -n), l));
+    let old = await read(env, lessonKey(shift(d, -n), l, t));
     if (old) due.push(...old.items);
   }
   let seen = new Set();
@@ -379,6 +399,68 @@ async function learnerSummary(env, profiles) {
   return out;
 }
 
+// Which tracks someone is studying, per language, so the coach and release know what to prepare.
+async function trackUsage(env, profiles) {
+  const people = profiles.length ? profiles : [null],
+    usage = { en: {}, zh: {} };
+  for (const user of people) {
+    const prof = await read(env, dataPrefix(user) + "profile.json", null);
+    for (const l of ["en", "zh"]) {
+      const t = trackOf(prof, l);
+      (usage[l][t] ||= []).push(user ? user.name : "나");
+    }
+  }
+  return usage;
+}
+
+// Placement test: 8 random words per band, four Korean meanings each. Answers are graded on the server.
+const PLACEMENT_PER_BAND = 8,
+  PLACEMENT_PASS = 6;
+function shuffled(a) {
+  a = [...a];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function placementTest(l) {
+  const bank = PLACEMENT[l],
+    meanings = TRACKS.flatMap((t) => bank[t].map((i) => i.meaning)),
+    items = [];
+  for (const band of TRACKS)
+    for (const i of shuffled(bank[band]).slice(0, PLACEMENT_PER_BAND)) {
+      const others = shuffled(meanings.filter((m) => m !== i.meaning)).slice(0, 3);
+      items.push({
+        id: band + ":" + bank[band].indexOf(i),
+        band,
+        term: i.term,
+        pronunciation: i.pronunciation,
+        options: shuffled([i.meaning, ...others]),
+      });
+    }
+  return items;
+}
+function gradePlacement(l, answers) {
+  if (!Array.isArray(answers) || !answers.length || answers.length > TRACKS.length * PLACEMENT_PER_BAND)
+    throw Error("레벨 테스트 답안이 올바르지 않습니다.");
+  const bands = Object.fromEntries(TRACKS.map((t) => [t, { correct: 0, total: 0 }])),
+    seen = new Set();
+  for (const a of answers) {
+    const [band, n] = String(a?.id || "").split(":"),
+      item = PLACEMENT[l][band]?.[+n];
+    if (!item || seen.has(a.id)) throw Error("레벨 테스트 답안이 올바르지 않습니다.");
+    seen.add(a.id);
+    bands[band].total++;
+    if (a.answer === item.meaning) bands[band].correct++;
+  }
+  const pass = (t) =>
+    bands[t].total > 0 && bands[t].correct >= Math.ceil((bands[t].total * PLACEMENT_PASS) / PLACEMENT_PER_BAND);
+  const recommended =
+    pass("basic") && pass("intermediate") ? (pass("advanced") ? "advanced" : "intermediate") : "basic";
+  return { bands, recommended };
+}
+
 export async function api(request, env, now = new Date()) {
   if (!env.BUCKET) return json({ error: "학습 저장소를 준비 중입니다." }, 503);
   const u = new URL(request.url),
@@ -402,9 +484,10 @@ export async function api(request, env, now = new Date()) {
       await seed(env);
       return json({ ok: true, week: "2026-10-19" });
     }
-    if ((path === "/api/homework" || path === "/api/coach/context") && !(await read(env, "seed-v1.json"))) {
+    if ((path === "/api/homework" || path === "/api/coach/context") && !(await read(env, "seed-v2.json"))) {
+      // v2 adds the intermediate/advanced first week; seeding never overwrites existing lessons.
       await seed(env);
-      await write(env, "seed-v1.json", { week: "2026-10-19", initializedAt: now.toISOString() });
+      await write(env, "seed-v2.json", { week: "2026-10-19", tracks: TRACKS, initializedAt: now.toISOString() });
     }
     if (path === "/api/coach/context") {
       let lessonKeys = await keys(env, "lessons/"),
@@ -435,11 +518,13 @@ export async function api(request, env, now = new Date()) {
         timezone: "Asia/Seoul",
         start: "2026-10-19",
         recommendations,
+        tracks: await trackUsage(env, profiles),
         lessons,
         profile: await read(env, "profile.json", {}),
         learners: await learnerSummary(env, profiles),
         rules: {
           weekday: { en: { voca: 20, idiom: 10 }, zh: { voca: 20, idiom: 5 } },
+          tracks: TRACKS,
           morning: "07:30",
           evening: "19:00",
         },
@@ -447,11 +532,13 @@ export async function api(request, env, now = new Date()) {
     }
     if (path === "/api/coach/lesson" && request.method === "POST") {
       let x = validateLesson(await request.json()),
-        key = lessonKey(x.date, x.lang),
+        key = lessonKey(x.date, x.lang, x.track),
         existing = await read(env, key);
       if (existing) return json({ ok: true, existing: true, lesson: existing });
       let all = await Promise.all(
-        (await keys(env, "lessons/")).filter((k) => k.endsWith("/" + x.lang + ".json")).map((k) => read(env, k)),
+        (await keys(env, "lessons/"))
+          .filter((k) => k.endsWith("/" + lessonSuffix(x.lang, x.track)))
+          .map((k) => read(env, k)),
       );
       let terms = new Set(all.flatMap((l) => l.items.map((i) => normal(i.term))));
       if (x.items.some((i) => terms.has(normal(i.term))))
@@ -465,47 +552,63 @@ export async function api(request, env, now = new Date()) {
       if (!validDate(date) || !["morning", "evening"].includes(phase)) throw Error("날짜와 공개 단계가 필요합니다.");
       if (date > kdate(now) || (date === kdate(now) && timeOf(now) < (phase === "morning" ? 730 : 1900)))
         throw Error("아직 공개 시간이 아닙니다.");
-      let ready = [];
-      for (const l of ["en", "zh"]) {
-        let mode = [0, 6].includes(weekday(date)) ? "weekend" : phase === "morning" ? "review" : "evening";
-        if (mode === "weekend") {
-          await quizItems(env, date, l, mode, now);
-        } else if (!(await read(env, lessonKey(date, l)))) throw Error("수업을 먼저 준비해주세요.");
-        ready.push(l);
-      }
+      let ready = [],
+        usage = await trackUsage(env, profiles);
+      for (const l of ["en", "zh"])
+        for (const t of Object.keys(usage[l])) {
+          let mode = [0, 6].includes(weekday(date)) ? "weekend" : phase === "morning" ? "review" : "evening";
+          if (mode === "weekend") {
+            await quizItems(env, date, l, mode, now, "", t);
+          } else if (!(await read(env, lessonKey(date, l, t))))
+            throw Error(`${l === "en" ? "영어" : "중국어"} ${TRACK_NAMES[t]} 수업을 먼저 준비해주세요.`);
+          ready.push(t === "basic" ? l : l + "-" + t);
+        }
       let entry = { date, phase, ready, at: now.toISOString() };
       await write(env, `releases/${date}/${phase}.json`, entry);
       return json(await read(env, `releases/${date}/${phase}.json`));
     }
     if (path === "/api/profile" && request.method === "POST") {
       let x = await request.json();
-      if (
-        !["beginner", "basic", "intermediate"].includes(x.en) ||
-        !["beginner", "basic", "intermediate"].includes(x.zh)
-      )
-        throw Error("언어별 시작 수준을 선택하세요.");
+      if (!trackOk(x.en) || !trackOk(x.zh)) throw Error("언어별 레벨(기초·중급·고급)을 선택하세요.");
       await write(env, P + "profile.json", {
+        v: 2,
         en: x.en,
         zh: x.zh,
         updatedAt: now.toISOString(),
-        note: "자기 평가이며 공식 수준 평가가 아님",
+        note: "본인이 고른 학습 레벨이며 공식 수준 평가가 아님",
       });
       return json({ ok: true });
+    }
+    if (path === "/api/placement" && request.method === "GET") {
+      const l = u.searchParams.get("lang");
+      if (!["en", "zh"].includes(l)) throw Error("언어를 선택하세요.");
+      return json({ lang: l, perBand: PLACEMENT_PER_BAND, pass: PLACEMENT_PASS, items: placementTest(l) });
+    }
+    if (path === "/api/placement/submit" && request.method === "POST") {
+      const x = await request.json();
+      if (!["en", "zh"].includes(x.lang)) throw Error("언어를 선택하세요.");
+      const r = gradePlacement(x.lang, x.answers),
+        entry = { lang: x.lang, ...r, at: now.toISOString() },
+        key = `${P}placement/${x.lang}.json`;
+      await write(env, key, [...(await read(env, key, [])), entry].slice(-10));
+      return json(entry);
     }
     let d = u.searchParams.get("date") || kdate(now),
       l = u.searchParams.get("lang") || "en";
     if (!validDate(d) || !["en", "zh"].includes(l)) throw Error("올바른 날짜와 언어를 선택하세요.");
+    const myProfile = await read(env, P + "profile.json", null),
+      T = (lang) => trackOf(myProfile, lang);
     if (path === "/api/homework") {
-      let prev = await previous(env, d, l),
+      let prev = await previous(env, d, l, T(l)),
         review = await attempts(env, d, l, "review", P),
         weekend = [0, 6].includes(weekday(d)),
         available = d < kdate(now) || (d === kdate(now) && timeOf(now) >= 730),
         unlocked = available && (weekend || !prev || review.length > 0),
-        lesson = unlocked && !weekend ? await read(env, lessonKey(d, l)) : null,
+        lesson = unlocked && !weekend ? await read(env, lessonKey(d, l, T(l))) : null,
         all = await history(env, P),
         personal = all.filter((a) => a.lang === l),
         learned = await read(env, `${P}study/${d}/${l}.json`, []);
-      let extra = await extraItems(env, d, l, P);
+      let extra = await extraItems(env, d, l, P, T(l));
       let known = new Set(personal.flatMap((a) => a.correctIds || []));
       let repeated = {};
       personal.forEach((a) =>
@@ -529,7 +632,10 @@ export async function api(request, env, now = new Date()) {
         study: learned,
         extraReview: extra,
         results: all.filter((a) => a.date === d && a.lang === l),
-        profile: await read(env, P + "profile.json", { en: "beginner", zh: "beginner" }),
+        track: T(l),
+        trackName: TRACK_NAMES[T(l)],
+        profile: { en: T("en"), zh: T("zh"), chosen: myProfile?.v === 2 },
+        placement: (await read(env, `${P}placement/${l}.json`, [])).at(-1) || null,
         stats: {
           tested: known.size,
           retained: Object.values(repeated).filter((dates) => dates.size >= 2).length,
@@ -541,18 +647,18 @@ export async function api(request, env, now = new Date()) {
     }
     if (path === "/api/quiz") {
       let mode = u.searchParams.get("mode"),
-        items = await quizItems(env, d, l, mode, now, P);
+        items = await quizItems(env, d, l, mode, now, P, T(l));
       return json({ date: d, lang: l, mode, items });
     }
     if (path === "/api/study" && request.method === "POST") {
       let x = await request.json();
       if (!validDate(x.date) || !["en", "zh"].includes(x.lang) || !Array.isArray(x.ids))
         throw Error("잘못된 학습 기록");
-      let lesson = await read(env, lessonKey(x.date, x.lang));
+      let lesson = await read(env, lessonKey(x.date, x.lang, T(x.lang)));
       if (!lesson) throw Error("수업이 없습니다.");
       if (x.date > kdate(now) || (x.date === kdate(now) && timeOf(now) < 730))
         throw Error("공개 시간 이후 학습하세요.");
-      let p = await previous(env, x.date, x.lang);
+      let p = await previous(env, x.date, x.lang, T(x.lang));
       if (p && !(await attempts(env, x.date, x.lang, "review", P)).length)
         throw Error("전날 복습을 먼저 완료해주세요.");
       let allowed = new Set(lesson.items.map((i) => i.id)),
@@ -570,7 +676,7 @@ export async function api(request, env, now = new Date()) {
         !["choice", "typing"].includes(x.format)
       )
         throw Error("잘못된 답안");
-      let items = await quizItems(env, x.date, x.lang, x.mode, now, P);
+      let items = await quizItems(env, x.date, x.lang, x.mode, now, P, T(x.lang));
       if (
         !items.length ||
         x.answers.length !== items.length ||
