@@ -1,7 +1,11 @@
 # Lingo Daily · LISA scheduling operations
 
 Site identity: use the existing private project ID from your local `.openai/hosting.json`. The actual project settings are excluded from this public repository.
-Keep the existing owner-private audience. Only the owner uses this single-learner store. Sites dispatch authenticates browser and service requests. Do not make this Site public with shared coach endpoints enabled.
+Keep the existing owner-private audience until family mode is set up. Before family mode only the owner uses this single-learner store and Sites dispatch is the only protection, so do not widen the audience then. Widen it for the family only after the owner profile exists and `COACH_KEY` is set, so the coach endpoints require the owner session or the key.
+
+## Family mode and the coach key
+
+Once the owner creates the first family profile in the site (Settings → 가족과 함께 쓰기), every `/api/coach/*` endpoint requires either the owner's signed-in session or the header `X-Coach-Key: <COACH_KEY>`, where `COACH_KEY` is a Worker secret set on the existing project. Without profiles the coach API behaves as before. Treat `COACH_KEY` like the Sites token: keep it out of prompts, source, argv and files, and pass it to the in-memory HTTP client over hidden stdin. `/api/coach/context` also returns `learners`: each profile's attempt counts and last three evening scores per language. `recommendations` stay based on the owner's evening scores, because lessons are shared by the whole family.
 
 ## Access from a fresh scheduled task
 
@@ -41,11 +45,11 @@ The site also offers scored error review and 3/7/30-day spaced review, with opti
 
 ## Storage / existing data
 
-R2 binding `BUCKET` stores `lessons/`, `results/`, `study/`, `profile.json`, and `releases/`. Routine updates write data through these APIs without source changes or redeployment. Existing dashboard localStorage `lingodaily-v1` is preserved; homework study counts are mirrored locally into date-specific VOCA/IDIOM plans. Existing browser-local history is not claimed to have been migrated to the cloud.
+R2 binding `BUCKET` stores `lessons/`, `results/`, `study/`, `profile.json`, and `releases/`. Family mode adds `profiles.json` (names, colors, salted PBKDF2 PIN hashes), `sessions/`, `auth/lock/` and per-learner copies of `results/`, `progress/`, `study/` and `profile.json` under `users/<id>/`. The owner profile keeps the original top-level keys. Routine updates write data through these APIs without source changes or redeployment. Existing dashboard localStorage `lingodaily-v1` is preserved; homework study counts are mirrored locally into date-specific VOCA/IDIOM plans. Existing browser-local history is not claimed to have been migrated to the cloud.
 
 ## Validation / publishing
 
-`node scripts/build.mjs` bundles source files into a dependency-free Worker artifact (all assets embedded); `node --test tests/homework.test.mjs` verifies curriculum quantities, time/review gates, grading, retention, idempotency, write validation. `node scripts/preview.mjs` serves an in-memory local-only QA store, not production R2. Follow the current Sites source and publishing workflow for the existing project. Keep short-lived native credentials in memory, pass them through hidden stdin when needed, and verify source identity before publication.
+`node scripts/build.mjs` bundles source files into a dependency-free Worker artifact (all assets embedded); `node --test tests/homework.test.mjs tests/family.test.mjs` verifies curriculum quantities, time/review gates, grading, retention, idempotency, write validation, profile/PIN sign-in, per-learner records and coach access control. `node scripts/preview.mjs` serves an in-memory local-only QA store, not production R2. Follow the current Sites source and publishing workflow for the existing project. Keep short-lived native credentials in memory, pass them through hidden stdin when needed, and verify source identity before publication.
 
 ## Scheduling status
 

@@ -1,4 +1,6 @@
-(() => {
+// Daily homework view (design A · Calm Focus): one flashcard at a time, a three-step day timeline,
+// stat tiles and the spaced-review strip. Quizzes, results and the pocket summary open as dialogs.
+window.LD.ready.then(() => {
   const $ = (s) => document.querySelector(s),
     E = (tag, cls, text) => {
       let e = document.createElement(tag);
@@ -6,53 +8,81 @@
       e.textContent = text;
       return e;
     },
+    icon = (name, cls = "") => {
+      const ns = "http://www.w3.org/2000/svg",
+        s = document.createElementNS(ns, "svg"),
+        u = document.createElementNS(ns, "use");
+      s.setAttribute("aria-hidden", "true");
+      if (cls) s.setAttribute("class", cls);
+      u.setAttribute("href", "#i-" + name);
+      s.append(u);
+      return s;
+    },
     today = () =>
       new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Seoul",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-      }).format(new Date());
+      }).format(new Date()),
+    shiftDate = (d, n) => {
+      let v = new Date(d + "T12:00:00+09:00");
+      v.setDate(v.getDate() + n);
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Seoul",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(v);
+    },
+    koDate = (d) =>
+      new Intl.DateTimeFormat("ko-KR", {
+        timeZone: "Asia/Seoul",
+        month: "long",
+        day: "numeric",
+        weekday: "short",
+      }).format(new Date(d + "T12:00:00+09:00"));
+  const MODE_NAMES = { review: "전날 복습", evening: "저녁 시험", weekend: "주말 시험", spaced: "간격 복습" };
   let selected = today(),
     lang = "en",
     data = null,
     active = true,
     busy = false,
-    quiz = null;
-  const nav = E("button", "active", "✦  DAILY HOMEWORK");
-  nav.dataset.view = "homework";
-  $("nav").prepend(nav);
+    quiz = null,
+    card = { key: "", index: 0, revealed: false };
+  const nav = $('.rail button[data-view="homework"]');
   const root = E("section", "homework", "");
   root.id = "homework";
-  $("header").after(root);
-  const original = [...$("main").children].filter((e) => e !== root && e.tagName !== "HEADER");
+  $(".topbar").after(root);
   function toggle(on) {
     active = on;
     root.hidden = !on;
-    $("main").classList.toggle("coach-active", on);
-    document
-      .querySelectorAll("nav button")
-      .forEach((b) => b.classList.toggle("active", on ? b === nav : b.classList.contains("active")));
+    $("#dashboard").hidden = on;
+    $("#topActions").hidden = !on;
+    document.body.classList.toggle("on-homework", on);
+    if (on)
+      document.querySelectorAll(".rail button[data-view]").forEach((b) => b.classList.toggle("active", b === nav));
     if (on) load();
   }
   nav.onclick = () => toggle(true);
-  document.querySelectorAll('nav button:not([data-view="homework"])').forEach((b) =>
+  $(".rail-mark").onclick = (e) => {
+    e.preventDefault();
+    toggle(true);
+  };
+  $(".wordmark").onclick = (e) => {
+    e.preventDefault();
+    toggle(true);
+  };
+  document.querySelectorAll('.rail button[data-view]:not([data-view="homework"])').forEach((b) =>
     b.addEventListener("click", () => {
       toggle(false);
-      nav.classList.remove("active");
+      document.querySelectorAll(".rail button[data-view]").forEach((x) => x.classList.toggle("active", x === b));
     }),
   );
-  async function api(path, body) {
-    const r = await fetch(
-      path,
-      body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {},
-    );
-    let v = await r.json();
-    if (!r.ok) throw Error(v.error || "요청을 처리하지 못했습니다.");
-    return v;
-  }
+  const api = (path, body) => window.LD.api(path, body);
   function button(label, fn, cls = "") {
     let b = E("button", cls, label);
+    b.type = "button";
     b.onclick = fn;
     return b;
   }
@@ -77,13 +107,13 @@
   const url = (path, mode) => path + "?date=" + selected + "&lang=" + lang + (mode ? "&mode=" + mode : "");
   async function load() {
     root.setAttribute("aria-busy", "true");
-    if (!root.children.length) root.append(E("p", "", "숙제를 불러오는 중입니다…"));
+    if (!root.children.length) root.append(E("p", "hw-loading", "숙제를 불러오는 중입니다…"));
     try {
       data = await api(url("/api/homework"));
       render();
     } catch (e) {
       root.replaceChildren(
-        E("h1", "", "DAILY HOMEWORK"),
+        E("h1", "hw-title", "오늘도, 하나씩 더."),
         E("p", "coach-alert", e.message),
         button("다시 불러오기", load),
       );
@@ -91,34 +121,53 @@
       root.setAttribute("aria-busy", "false");
     }
   }
-  function render() {
-    if (active) nav.classList.add("active");
-    root.replaceChildren();
-    let top = E("div", "coach-heading", ""),
+
+  // ------------------------------------------------------------------ header pieces
+  function renderLangToggle() {
+    const box = $("#topActions"),
+      seg = E("div", "segmented", "");
+    seg.setAttribute("role", "group");
+    seg.setAttribute("aria-label", "학습 언어");
+    for (const [l, name] of [
+      ["en", "English"],
+      ["zh", "中文"],
+    ]) {
+      const b = button(name, () => {
+        if (lang === l) return;
+        lang = l;
+        load();
+      });
+      b.setAttribute("aria-pressed", String(lang === l));
+      if (lang === l) b.classList.add("on");
+      seg.append(b);
+    }
+    box.replaceChildren(seg);
+  }
+  function hero() {
+    const top = E("div", "hw-hero", ""),
       t = E("div", "", "");
     t.append(
-      E("div", "eyebrow", "YOUR ONE-YEAR LANGUAGE JOURNEY"),
-      E("h1", "", "오늘 익히고, 내일 기억하기 ✦"),
-      E("p", "", "LISA와 함께 기초부터. 매일의 복습이 오래가는 어휘가 됩니다."),
+      E("h1", "hw-title", data.weekend ? "주말엔, 한 주를 내 것으로." : "오늘도, 하나씩 더."),
+      E(
+        "p",
+        "hw-sub",
+        data.weekend ? "월~금에 배운 표현을 모두 섞어 다시 꺼내 봅니다." : "매일 꾸준히, 오래 기억에 남는 어휘 학습",
+      ),
     );
-    top.append(t, E("span", "coach-pill", "● 서버에 학습 기록 저장"));
-    root.append(top);
-    let bar = E("div", "coach-toolbar", "");
-    for (const [l, name] of [
-      ["en", "🇺🇸 영어"],
-      ["zh", "🇨🇳 중국어"],
-    ])
-      bar.append(
-        button(
-          name,
-          () => {
-            lang = l;
-            load();
-          },
-          lang === l ? "selected" : "",
-        ),
-      );
-    let date = E("input", "", "");
+    const nav = E("div", "hw-date", "");
+    const prev = button("", () => {
+      selected = shiftDate(selected, -1);
+      load();
+    });
+    prev.append(icon("left"));
+    prev.setAttribute("aria-label", "이전 날짜");
+    const next = button("", () => {
+      selected = shiftDate(selected, 1);
+      load();
+    });
+    next.append(icon("right"));
+    next.setAttribute("aria-label", "다음 날짜");
+    const date = E("input", "", "");
     date.type = "date";
     date.value = selected;
     date.setAttribute("aria-label", "숙제 날짜");
@@ -128,210 +177,387 @@
         load();
       }
     };
-    bar.append(
-      date,
-      button("오늘", () => {
-        selected = today();
-        load();
-      }),
+    nav.append(prev, date, next);
+    if (selected !== data.serverDate)
+      nav.append(
+        button(
+          "오늘",
+          () => {
+            selected = today();
+            load();
+          },
+          "today",
+        ),
+      );
+    top.append(t, nav);
+    return top;
+  }
+
+  // ------------------------------------------------------------------ day state
+  function dayState() {
+    const eveningOpen = selected < data.serverDate || (selected === data.serverDate && data.serverTime >= 1900);
+    const done = (mode) => data.results.filter((a) => a.mode === mode);
+    const best = (mode) => Math.max(...done(mode).map((a) => a.score));
+    return { eveningOpen, done, best };
+  }
+  function steps() {
+    const s = dayState(),
+      box = E("ol", "steps", "");
+    box.setAttribute("aria-label", "오늘의 학습 순서");
+    const step = (time, title, status, meta, act, short) => {
+      const li = E("li", "step " + status, "");
+      const dot = E("span", "step-dot", "");
+      if (status === "done") dot.textContent = "✓";
+      else if (status === "locked") dot.append(icon("lock"));
+      const body = E("div", "step-body", "");
+      if (time) body.append(E("span", "step-time", time));
+      const t = E("strong", "", "");
+      t.append(E("span", "t-long", title), E("span", "t-short", short || title));
+      body.append(t);
+      if (meta) body.append(E("span", "step-meta", meta));
+      if (act) body.append(act);
+      li.append(dot, body);
+      box.append(li);
+    };
+    if (data.weekend) {
+      const n = s.done("weekend").length;
+      step(
+        "토·일 07:30",
+        "주간 전체 SHUFFLE",
+        !data.available ? "locked" : n ? "done" : "current",
+        n ? "최고 " + s.best("weekend") + "%" : lang === "en" ? "100 VOCA + 50 IDIOM" : "100 VOCA + 25 IDIOM",
+        data.available ? button(n ? "다시 풀기" : "시작", () => startQuiz("weekend"), "step-btn") : null,
+      );
+      step(
+        "언제든",
+        "오답·간격 복습",
+        data.extraReview.length ? "current" : "done",
+        data.extraReview.length + "개 대기",
+        null,
+      );
+      return box;
+    }
+    const review = s.done("review").length;
+    step(
+      "07:30",
+      "전날 복습",
+      !data.available ? "locked" : !data.previousDate ? "skip" : data.reviewRequired ? "current" : "done",
+      !data.previousDate
+        ? "첫 수업 · 복습 없음"
+        : review
+          ? "최고 " + s.best("review") + "%"
+          : koDate(data.previousDate) + " 표현",
+      data.available && data.previousDate
+        ? button(data.reviewRequired ? "시작" : "다시 풀기", () => startQuiz("review"), "step-btn")
+        : null,
     );
-    root.append(bar);
+    const total = data.lesson?.items.length || (lang === "en" ? 30 : 25),
+      studied = data.study.length;
+    const counts = lang === "en" ? "20 VOCA + 10 IDIOM" : "20 VOCA + 5 IDIOM",
+      homeworkDone = !!data.lesson && studied >= total;
+    step(
+      "",
+      "새 숙제",
+      !data.lesson ? (data.unlocked ? "wait" : "locked") : homeworkDone ? "done" : "current",
+      data.lesson
+        ? counts + " · 확인 " + studied + "/" + total
+        : data.unlocked
+          ? "수업 준비 중"
+          : counts + " · 복습 후 열림",
+      null,
+      lang === "en" ? "새 숙제 20+10" : "새 숙제 20+5",
+    );
+    const evening = s.done("evening").length,
+      canTest = s.eveningOpen && !data.reviewRequired && !!data.lesson;
+    // The test is highlighted as the current step only once the homework is done; before that it is just "open".
+    step(
+      "19:00",
+      "당일 시험",
+      evening ? "done" : canTest ? (homeworkDone ? "current" : "open") : "locked",
+      evening ? "최고 " + s.best("evening") + "%" : canTest ? "지금 볼 수 있어요" : "19:00에 열림",
+      canTest ? button(evening ? "다시 풀기" : "시작", () => startQuiz("evening"), "step-btn") : null,
+      "19:00 시험",
+    );
+    return box;
+  }
+
+  // ------------------------------------------------------------------ focus card
+  function focusCard() {
+    const box = E("section", "focus", "");
+    const message = (iconName, eyebrow, title, text, act) => {
+      box.classList.add("focus-message");
+      if (iconName) box.append(icon(iconName, "focus-icon"));
+      if (eyebrow) box.append(E("span", "eyebrow", eyebrow));
+      box.append(E("h2", "focus-title", title));
+      if (text) box.append(E("p", "focus-text", text));
+      if (act) box.append(act);
+      return box;
+    };
+    if (!data.available)
+      return message("lock", "", "오전 7시 30분에 열립니다", "이 날짜의 숙제는 한국 시간 07:30에 공개됩니다.");
+    if (data.weekend)
+      return message(
+        "repeat",
+        "WEEKEND SHUFFLE",
+        lang === "en" ? "150문항 누적 시험" : "125문항 누적 시험",
+        "그 주 월~금에 배정한 모든 표현을 새 순서로 섞습니다. 토·일 모두 볼 수 있어요.",
+        button("주말 누적 시험 시작", () => startQuiz("weekend"), "primary big"),
+      );
+    if (data.reviewRequired)
+      return message(
+        "",
+        "STEP 1 · 전날 복습",
+        koDate(data.previousDate) + " 표현 다시 떠올리기",
+        "복습 시험을 마치면 오늘의 새 표현이 열립니다. 정답률과 오답은 따로 기록됩니다.",
+        button("복습 시험 시작", () => startQuiz("review"), "primary big"),
+      );
+    if (!data.lesson) return message("", "", "오늘 수업을 준비 중입니다", "수업이 준비되면 새로고침해 주세요.");
+    return flashcard(box);
+  }
+  function flashcard(box) {
+    const items = data.lesson.items,
+      key = selected + ":" + lang;
+    if (card.key !== key) {
+      const first = items.findIndex((i) => !data.study.includes(i.id));
+      card = { key, index: first < 0 ? 0 : first, revealed: false };
+    }
+    const i = items[card.index],
+      studied = data.study.includes(i.id);
+    box.classList.add("flashcard");
+    const head = E("div", "card-head", "");
+    head.append(
+      E("span", "card-kind", (i.kind === "idiom" ? "IDIOM" : "VOCA") + " · " + String(card.index + 1).padStart(2, "0")),
+      E(
+        "span",
+        "card-done" + (studied ? " on" : ""),
+        studied ? "✓ 학습 확인" : "학습 확인 " + data.study.length + "/" + items.length,
+      ),
+    );
+    const go = (n) => {
+      card.index = (n + items.length) % items.length;
+      card.revealed = false;
+      paintFocus();
+    };
+    const prev = button("", () => go(card.index - 1), "card-arrow");
+    prev.append(icon("left"));
+    prev.setAttribute("aria-label", "이전 표현");
+    const next = button("", () => go(card.index + 1), "card-arrow");
+    next.append(icon("right"));
+    next.setAttribute("aria-label", "다음 표현");
+    const center = E("div", "card-center", "");
+    const term = E("h2", "card-term" + ([...i.term].length > 14 ? " long" : ""), i.term);
+    term.lang = lang === "en" ? "en" : "zh-CN";
+    const sound = button("", () => speak(i), "sound-btn");
+    sound.append(icon("sound"));
+    sound.setAttribute("aria-label", i.term + " 발음 듣기");
+    center.append(term, E("p", "card-pron", lang === "en" ? "/" + i.pronunciation + "/" : i.pronunciation), sound);
+    const answer = E("div", "card-answer", "");
+    answer.hidden = !card.revealed;
+    answer.append(E("p", "card-meaning", i.meaning));
+    if (i.example) answer.append(E("p", "card-example", i.example));
+    if (i.exampleMeaning) answer.append(E("p", "card-example ko", i.exampleMeaning));
+    center.append(answer);
+    let main;
+    if (!card.revealed)
+      main = button(
+        "뜻 보기",
+        () => {
+          card.revealed = true;
+          paintFocus();
+        },
+        "primary big",
+      );
+    else if (!studied)
+      main = button(
+        "알았어요 · 학습 확인",
+        () =>
+          action(async () => {
+            const r = await api("/api/study", { date: selected, lang, ids: [i.id] });
+            data.study = r.ids;
+            mirrorLegacy();
+            card.index = (card.index + 1) % items.length;
+            card.revealed = false;
+            render();
+          }),
+        "primary big",
+      );
+    else main = button("다음 표현", () => go(card.index + 1), "primary big");
+    center.append(main);
+    const body = E("div", "card-body", "");
+    body.append(prev, center, next);
+    const progress = E("div", "card-progress", ""),
+      track = E("div", "track", ""),
+      fill = E("i", "", "");
+    fill.style.width = ((card.index + 1) / items.length) * 100 + "%";
+    track.append(fill);
+    progress.append(track, E("span", "", card.index + 1 + " / " + items.length));
+    box.append(head, body, progress);
+    return box;
+  }
+  function paintFocus() {
+    const old = root.querySelector(".focus");
+    if (old) old.replaceWith(focusCard());
+  }
+
+  // ------------------------------------------------------------------ main render
+  function render() {
+    renderLangToggle();
+    root.replaceChildren();
+    root.append(hero());
     let msg = E("p", "coach-alert", "");
     msg.id = "coach-message";
     msg.setAttribute("role", "status");
     msg.hidden = true;
     root.append(msg);
-    let rhythm = E("div", "coach-rhythm", "");
-    rhythm.append(
-      E("span", "", "☀ 07:30 전날 복습 → 새 숙제"),
-      E("span", "", "☾ 19:00 당일 시험"),
-      E("span", "", "토·일 07:30 주간 전체 SHUFFLE"),
-      E("small", "", "한국 시간 · 정시 알림 예약은 아직 연결되지 않았습니다"),
-    );
-    root.append(rhythm);
-    let stats = E("div", "coach-stats", "");
+
+    const lead = E("div", "hw-lead", "");
+    lead.append(focusCard(), steps());
+    root.append(lead);
+
+    const tiles = E("div", "tiles", "");
     for (const [v, label] of [
-      [data.stats.tested, "시험에서 맞힌 표현"],
-      [data.stats.retained, "서로 다른 날 정답 표현"],
-      [data.stats.attempts, "누적 시험 횟수"],
+      [data.stats.tested, "맞힌 표현"],
+      [data.stats.retained, "서로 다른 날 정답"],
+      [data.stats.attempts, "누적 시험"],
     ]) {
-      let e = E("article", "", "");
-      e.append(E("strong", "", String(v)), E("span", "", label));
-      stats.append(e);
+      const t = E("article", "tile", "");
+      t.append(E("strong", "", String(v)), E("span", "", label));
+      tiles.append(t);
     }
-    root.append(stats);
-    let intro = E("div", "coach-intro", "");
-    intro.append(
-      E("h2", "", data.weekend ? "주말, 한 주의 표현을 내 것으로" : "DAILY " + (lang === "en" ? "ENGLISH" : "CHINESE")),
-      E(
-        "p",
-        "",
-        data.weekend
-          ? lang === "en"
-            ? "100 VOCA + 50 IDIOM · 총 150문항"
-            : "100 VOCA + 25 IDIOM · 총 125문항"
-          : (lang === "en" ? "20 VOCA + 10 IDIOM" : "20 VOCA + 5 IDIOM") + " · 기초부터 조금씩 넓혀갑니다.",
-      ),
+    const spaced = button(
+      "",
+      () => $("#extra-review")?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      "tile tile-spaced",
     );
-    root.append(intro);
-    if (!data.available) {
-      root.append(E("div", "coach-alert", "이 날짜의 숙제는 오전 7시 30분에 공개됩니다."));
-    } else if (data.weekend) {
-      let panel = E("div", "coach-panel", "");
-      panel.append(
-        E("h2", "", "토·일 모두 다른 순서로 전체 복습"),
-        E("p", "", "그 주 월~금에 배정한 모든 표현을 섞습니다. 아직 공부하지 못한 평일 분량도 포함됩니다."),
-        button("주말 누적 시험 시작", () => startQuiz("weekend"), "primary"),
+    const sIcon = E("span", "tile-icon", "");
+    sIcon.append(icon("repeat"));
+    const sText = E("span", "", "");
+    sText.append(
+      E("b", "", "간격 복습"),
+      E("small", "", "3일 · 7일 · 30일 — "),
+      E("em", "", data.extraReview.length + "개 대기"),
+    );
+    spaced.append(sIcon, sText);
+    tiles.append(spaced);
+    root.append(tiles);
+
+    if (data.lesson) {
+      const sec = E("section", "hw-section", ""),
+        title = E("div", "hw-section-title", ""),
+        h = E("div", "", "");
+      h.append(
+        E("h2", "", "오늘의 표현 " + data.lesson.items.length + "개"),
+        E("p", "", data.lesson.level + " · 카드를 누르면 위에서 크게 볼 수 있어요"),
       );
-      root.append(panel);
-    } else {
-      let flow = E("div", "coach-steps", "");
-      let rev = E("article", "coach-panel", "");
-      rev.append(
-        E("span", "eyebrow", "STEP 01 · REMEMBER"),
-        E("h2", "", "전날 표현 먼저 복습"),
-        E(
-          "p",
-          "",
-          data.previousDate
-            ? data.previousDate + "의 단어와 숙어 전체를 다시 확인합니다."
-            : "첫 수업입니다. 오늘은 새 숙제부터 시작하세요.",
-        ),
-      );
-      if (data.previousDate)
-        rev.append(
-          button(
-            data.reviewRequired ? "복습 시험 시작" : "✓ 복습 완료 · 다시 풀기",
-            () => startQuiz("review"),
-            data.reviewRequired ? "primary" : "",
-          ),
-        );
-      let evening = E("article", "coach-panel", "");
-      evening.append(
-        E("span", "eyebrow", "STEP 03 · RECALL"),
-        E("h2", "", "저녁 7시, 오늘의 테스트"),
-        E("p", "", "뜻 고르기 또는 표현 직접 쓰기로 기억을 확인하세요."),
-      );
-      let b = button("오늘의 시험 시작", () => startQuiz("evening"), "primary");
-      b.disabled = (selected === data.serverDate && data.serverTime < 1900) || data.reviewRequired;
-      evening.append(b);
-      flow.append(rev, evening);
-      root.append(flow);
-      if (data.reviewRequired)
-        root.append(
-          E(
-            "div",
-            "coach-alert",
-            "STEP 01 복습 시험을 끝내면 오늘의 새 표현이 열립니다. 정답률과 오답은 별도로 기록됩니다.",
-          ),
-        );
-      if (data.lesson) {
-        let title = E("div", "section-title", "");
-        title.append(
-          E("h2", "", "STEP 02 · 오늘의 새로운 표현"),
-          E("span", "", data.lesson.level + " · " + data.study.length + "/" + data.lesson.items.length + " 학습 확인"),
-        );
-        root.append(title);
-        root.append(button("▣ 휴대폰 한 화면 요약 · 이미지 저장", showSummary, "summary-open"));
-        let filter = E("div", "coach-filter", "");
-        filter.append(
-          E("span", "", "영어 /IPA/ · 중국어 병음 · 한국어 뜻"),
-          E("small", "", "🔊 브라우저 음성합성 · 클릭해서 듣기"),
-        );
-        root.append(filter);
-        let grid = E("div", "word-grid", "");
-        data.lesson.items.forEach((i, n) => grid.append(wordCard(i, n, true)));
-        root.append(grid);
-      } else if (data.unlocked) {
-        root.append(E("p", "coach-alert", "오늘 수업을 준비 중입니다. 예약 실행이 완료되면 새로고침해주세요."));
-      }
+      const sum = button("", showSummary, "ghost");
+      sum.append(icon("download"), document.createTextNode(" 포켓 단어장"));
+      title.append(h, sum);
+      sec.append(title);
+      const grid = E("div", "word-grid", "");
+      data.lesson.items.forEach((i, n) => {
+        const c = wordCard(i, n, true);
+        c.querySelector("h3").onclick = () => {
+          card.index = n;
+          card.revealed = false;
+          paintFocus();
+          root.querySelector(".focus").scrollIntoView({ behavior: "smooth", block: "center" });
+        };
+        grid.append(c);
+      });
+      sec.append(grid);
+      root.append(sec);
     }
-    let review = E("section", "coach-panel extra-review", "");
-    review.append(
+
+    let review = E("section", "hw-section extra-review", "");
+    review.id = "extra-review";
+    const rt = E("div", "hw-section-title", ""),
+      rh = E("div", "", "");
+    rh.append(
       E("h2", "", "오답 · 3일 / 7일 / 30일 복습"),
-      E("p", "", "최근 오답을 먼저, 간격 복습 표현을 이어서 보여줍니다. 틀린 표현은 이후 시험에서 다시 확인합니다."),
+      E("p", "", "최근 오답을 먼저, 간격 복습 표현을 이어서 보여줍니다."),
     );
+    rt.append(rh);
+    review.append(rt);
     if (data.extraReview.length) {
-      review.append(button("복습 표현 시험 보기", () => startQuiz("spaced"), "primary"));
-      review.append(
+      const row = E("div", "btn-row", "");
+      row.append(
+        button("복습 표현 시험 보기", () => startQuiz("spaced"), "primary"),
         button("뜻 가리고 복습하기", () => {
           review.classList.toggle("conceal");
           review.querySelectorAll(".word-meaning").forEach((e) => (e.tabIndex = 0));
         }),
       );
+      review.append(row);
       let grid = E("div", "word-grid", "");
       data.extraReview.forEach((i, n) => grid.append(wordCard(i, n, false)));
       review.append(grid);
     } else review.append(E("p", "sub", "시험을 마치면 오답과 간격 복습 표현이 여기에 모입니다."));
     root.append(review);
-    let history = E("section", "coach-panel", "");
-    history.append(
+
+    let history = E("section", "hw-section", "");
+    const ht = E("div", "hw-section-title", ""),
+      hh = E("div", "", "");
+    hh.append(
       E("h2", "", "나의 기억력 추적"),
-      E(
-        "p",
-        "",
-        "최근 시험 정답률 · 두 언어는 각각 기록합니다. 같은 날 반복 정답은 장기 기억 지표에 중복 계산하지 않습니다.",
-      ),
+      E("p", "", "최근 시험 정답률 · 같은 날 반복 정답은 장기 기억 지표에 중복 계산하지 않습니다."),
     );
+    ht.append(hh);
+    history.append(ht);
     let chart = E("div", "score-chart", "");
     for (const a of data.stats.recent) {
       let c = E("div", "score-column", ""),
         bar = E("div", "score-bar", "");
-      bar.style.height = Math.max(3, a.score) + "px";
+      bar.style.height = Math.max(3, a.score) + "%";
+      const col = E("div", "score-track", "");
+      col.append(bar);
       c.append(
         E("strong", "", a.score + "%"),
-        bar,
-        E("small", "", a.date.slice(5)),
-        E("small", "", { review: "복습", evening: "저녁", weekend: "주말", spaced: "간격" }[a.mode]),
+        col,
+        E("small", "", a.date.slice(5).replace("-", "/")),
+        E("small", "", MODE_NAMES[a.mode].slice(0, 2)),
       );
       chart.append(c);
     }
     if (!data.stats.recent.length) chart.append(E("p", "sub", "첫 시험부터 성장 기록이 시작됩니다."));
     history.append(chart);
-    root.append(history);
     let results = E("div", "coach-result-list", "");
-    data.results.forEach((a) => {
-      let b = button(
-        { review: "전날 복습", evening: "저녁 시험", weekend: "주말 시험", spaced: "간격 복습" }[a.mode] +
-          " · " +
-          a.correct +
-          "/" +
-          a.total +
-          " · " +
-          a.score +
-          "% → 오답 확인",
-        () => showResult(a),
-      );
-      results.append(b);
-    });
-    root.append(results);
-    let plan = E("div", "coach-panel roadmap", "");
+    data.results.forEach((a) =>
+      results.append(
+        button(MODE_NAMES[a.mode] + " · " + a.correct + "/" + a.total + " · " + a.score + "% → 오답 확인", () =>
+          showResult(a),
+        ),
+      ),
+    );
+    history.append(results);
+    root.append(history);
+
+    let plan = E("section", "hw-section roadmap", "");
     plan.append(
       E("h2", "", "1년, 기초에서 실전까지"),
       E(
         "p",
         "",
-        "1–3개월: 일상 기초 → 4–6개월: 여행·사회생활 → 7–9개월: 비즈니스·협상 → 10–12개월: 시사·문화·깊이 있는 대화",
+        "1–3개월 일상 기초 → 4–6개월 여행·사회생활 → 7–9개월 비즈니스·협상 → 10–12개월 시사·문화·깊이 있는 대화",
       ),
       E(
         "p",
-        "",
-        "달력보다 기억한 정도를 우선합니다. 최근 저녁 시험 3회의 정답률이 85% 이상이면 조금씩 높이고, 60% 미만이면 기초를 보강합니다. 단계는 비공식 학습 기준입니다.",
-      ),
-      E(
-        "small",
-        "",
-        "월별 경로는 방향을 잡기 위한 목표이며 실제 난도는 성적에 맞춰 조절합니다. 신규 어휘는 평일, 주말에는 누적 복습합니다. 숙어에는 구동사·고정 표현과 중국어 일상 관용 표현이 포함됩니다.",
+        "sub",
+        "최근 저녁 시험 3회의 정답률이 85% 이상이면 조금씩 높이고, 60% 미만이면 기초를 보강합니다. 단계는 비공식 학습 기준이며, 숙어에는 구동사·고정 표현과 중국어 일상 관용 표현이 포함됩니다.",
       ),
     );
     root.append(plan);
     let footer = E("div", "coach-footer", "");
     footer.append(
-      E("span", "", "숙제·시험 결과는 서버에 저장됩니다. 기존 대시보드 기록은 현재 브라우저에 유지됩니다."),
+      E(
+        "span",
+        "",
+        "숙제·시험 결과는 서버에 사람별로 저장됩니다. 한국 시간 기준 · 정시 알림은 아직 연결되지 않았습니다.",
+      ),
       button("수준 설정", profileForm),
     );
     root.append(footer);
   }
+
   function speak(i) {
     if (!("speechSynthesis" in window)) {
       alertBox("이 브라우저는 음성합성을 지원하지 않습니다. Chrome 또는 Safari에서 시도해주세요.");
@@ -354,8 +580,9 @@
       head = E("div", "word-top", "");
     head.append(
       E("span", "", String(n + 1).padStart(2, "0") + " · " + i.kind.toUpperCase()),
-      button("🔊", () => speak(i), "sound"),
+      button("", () => speak(i), "sound"),
     );
+    head.lastChild.append(icon("sound"));
     head.lastChild.setAttribute("aria-label", i.term + " 발음 듣기");
     card.append(
       head,
@@ -387,7 +614,7 @@
   }
   function mirrorLegacy() {
     try {
-      let s = JSON.parse(localStorage.getItem("lingodaily-v1"));
+      let s = JSON.parse(localStorage.getItem(window.LD.storageKey));
       if (!s?.plans) return;
       for (const [kind, cat] of [
         ["voca", 0],
@@ -410,7 +637,7 @@
         s.records[selected] ??= {};
         s.records[selected][id] = { value, minutes: 0 };
       }
-      localStorage.setItem("lingodaily-v1", JSON.stringify(s));
+      localStorage.setItem(window.LD.storageKey, JSON.stringify(s));
       window.dispatchEvent(new Event("lisa-records-updated"));
     } catch {}
   }
@@ -472,7 +699,7 @@
           button(
             label,
             () => {
-              let key = ["lisa-quiz", selected, lang, mode, format].join(":"),
+              let key = [window.LD.quizPrefix, selected, lang, mode, format].join(":"),
                 saved;
               try {
                 saved = JSON.parse(localStorage.getItem(key));
@@ -835,11 +1062,30 @@
     }, "image/png");
   }
 
+  document.addEventListener("keydown", (e) => {
+    if (
+      !active ||
+      !data?.lesson ||
+      document.querySelector("dialog[open]") ||
+      /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)
+    )
+      return;
+    if (document.body.classList.contains("locked")) return;
+    const f = root.querySelector(".flashcard");
+    if (!f) return;
+    if (e.key === "ArrowRight") f.querySelectorAll(".card-arrow")[1]?.click();
+    else if (e.key === "ArrowLeft") f.querySelectorAll(".card-arrow")[0]?.click();
+    else if (e.key === " " && e.target === document.body) {
+      e.preventDefault();
+      f.querySelector(".card-center .primary")?.click();
+    }
+  });
+  window.addEventListener("ld-open-level", () => data && profileForm());
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && active && !$("#coach-dialog")?.open) load();
+    if (!document.hidden && active && !document.querySelector("dialog[open]")) load();
   });
   setInterval(() => {
-    if (active && !$("#coach-dialog")?.open) load();
+    if (active && !document.hidden && !document.querySelector("dialog[open]")) load();
   }, 60000);
   toggle(true);
-})();
+});

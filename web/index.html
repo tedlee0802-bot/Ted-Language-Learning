@@ -1,123 +1,177 @@
 <!doctype html>
 <html lang="ko">
-  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>
-    Lingo Daily — 매일 쌓는 언어 습관</title
-  ><link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="homework.css" />
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Lingo Daily — 매일 쌓는 언어 습관</title>
+    <meta name="description" content="가족이 함께 쓰는 영어·중국어 매일 단어 학습" />
+    <meta name="theme-color" content="#FAF8F4" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lingo Daily" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="homework.css" />
+  </head>
   <body>
-    <aside>
-      <a class="brand" href="#"
-        >◈ <span>lingo<span class="muted">daily</span></span></a
-      >
-      <div class="workspace">MY LEARNING SPACE</div>
-      <nav>
-        <button class="active" data-view="daily">▦ &nbsp; 데일리 대시보드</button
-        ><button data-view="plan">▤ &nbsp; 학습 계획</button><button data-view="report">◴ &nbsp; 학습 리포트</button>
-      </nav>
-      <div class="side-note">
-        <span>작은 습관, 넓어지는 세상</span>
-        <p>하루의 작은 한 걸음이<br />새로운 언어가 됩니다.</p>
-        <div>✦ &nbsp; KEEP GOING</div>
-      </div>
-      <footer>● 브라우저에 자동 저장<br /><small>이 기기에서 이어서 학습하세요.</small></footer>
-    </aside>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-home" viewBox="0 0 24 24">
+          <path d="M4 10.5 12 4l8 6.5V19a1.5 1.5 0 0 1-1.5 1.5H15v-5.5H9v5.5H5.5A1.5 1.5 0 0 1 4 19z" />
+        </symbol>
+        <symbol id="i-check" viewBox="0 0 24 24">
+          <path d="M4 6.5h9M4 12h9M4 17.5h9M16 6.5l1.5 1.5 3-3M16 12l1.5 1.5 3-3M16 17.5l1.5 1.5 3-3" />
+        </symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24">
+          <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" />
+          <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" />
+        </symbol>
+        <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20V13M10 20V9M15 20v-5M20 20V5" /></symbol>
+        <symbol id="i-settings" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"
+          />
+        </symbol>
+        <symbol id="i-sound" viewBox="0 0 24 24">
+          <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+          <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18 6.5a7.8 7.8 0 0 1 0 11" />
+        </symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24">
+          <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+          <path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5" />
+        </symbol>
+        <symbol id="i-left" viewBox="0 0 24 24"><path d="M14.5 6 8.5 12l6 6" /></symbol>
+        <symbol id="i-right" viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6" /></symbol>
+        <symbol id="i-repeat" viewBox="0 0 24 24">
+          <rect x="4" y="5.5" width="16" height="14.5" rx="2.5" />
+          <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4M8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17h.01M12 17h.01" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19.5h14" /></symbol>
+      </defs>
+    </svg>
+
+    <!-- Profile picker / PIN screen. family.js fills it when family profiles are enabled. -->
+    <section id="gate" class="gate" hidden aria-live="polite"></section>
+
+    <nav class="rail" aria-label="주 메뉴">
+      <a class="rail-mark" href="#" aria-label="lingo daily 홈">◈</a>
+      <button class="active" data-view="homework">
+        <svg><use href="#i-home" /></svg><span>홈</span>
+      </button>
+      <button data-view="daily">
+        <svg><use href="#i-check" /></svg><span>체크리스트</span>
+      </button>
+      <button data-view="plan">
+        <svg><use href="#i-calendar" /></svg><span>계획</span>
+      </button>
+      <button data-view="report">
+        <svg><use href="#i-chart" /></svg><span>리포트</span>
+      </button>
+      <button id="settingsBtn" class="rail-settings" type="button">
+        <svg><use href="#i-settings" /></svg><span>설정</span>
+      </button>
+    </nav>
+
     <main>
-      <header>
-        <span>나의 언어 학습 여정</span><span class="profile">나의 스터디 &nbsp; <b>T</b></span>
+      <header class="topbar">
+        <a class="wordmark" href="#">lingo daily</a>
+        <span class="topbar-date" id="topDate"></span>
+        <div class="topbar-actions" id="topActions"></div>
+        <button class="me" id="meBtn" type="button" aria-label="내 프로필">
+          <b id="meInitial">나</b><span id="meName"></span>
+        </button>
       </header>
-      <div class="heading">
-        <div>
-          <div class="eyebrow">A LITTLE EVERY DAY</div>
-          <h1>오늘도, 한 걸음 더 <span>✦</span></h1>
-          <p>꾸준함이 실력이 되는 곳. 오늘의 언어 습관을 만들어보세요.</p>
-        </div>
-        <button class="primary" id="planBtn">＋ 학습 계획 추가</button>
-      </div>
-      <div class="toolbar">
-        <div id="languages"></div>
-        <button id="addLang">＋ 언어 추가</button>
-      </div>
-      <div class="datebar">
-        <div>
-          <button id="prev" aria-label="이전 날짜">‹</button><input type="date" id="date" /><button
-            id="next"
-            aria-label="다음 날짜"
-          >
-            ›</button
-          ><button id="today">오늘</button>
-        </div>
-        <span>YOUR DAILY CHECK-IN</span>
-      </div>
-      <section class="stats">
-        <article>
-          <label>오늘의 달성률 <span>◉</span></label
-          ><strong id="percent">0<span>%</span></strong>
-          <div class="track"><i id="totalbar"></i></div>
-          <small id="completeText"></small>
-        </article>
-        <article>
-          <label>학습 시간 <span>◷</span></label
-          ><strong id="minutes">0<span>분</span></strong
-          ><small>기록한 실제 학습 시간</small>
-        </article>
-        <article>
-          <label>완료한 학습 <span>☑</span></label
-          ><strong id="done">0<span>/ 8</span></strong
-          ><small>차근차근 목표를 채워보세요</small>
-        </article>
-        <article class="green">
-          <label>연속 학습 <span>✧</span></label
-          ><strong id="streak">0<span>일</span></strong
-          ><small>학습을 기록하면 습관이 시작돼요</small>
-        </article>
-      </section>
-      <div class="columns">
-        <section>
-          <div id="warning"></div>
-          <div class="section-title">
-            <div>
-              <h2 id="listTitle">오늘의 학습 체크리스트</h2>
-              <p>작은 성취를 하나씩 체크해보세요.</p>
-            </div>
-            <span id="taskCount"></span>
+
+      <!-- Daily homework (homework.js) is inserted here. -->
+
+      <div id="dashboard" hidden>
+        <div class="heading">
+          <div>
+            <div class="eyebrow">A LITTLE EVERY DAY</div>
+            <h1>나의 학습 체크리스트</h1>
+            <p>단어 외에 듣기·읽기·말하기 같은 다른 학습도 기록해 보세요.</p>
           </div>
-          <div id="tasks"></div>
-          <div class="empty" id="empty" hidden>아직 계획이 없어요. 학습 계획을 추가해보세요.</div>
+          <button class="primary" id="planBtn">＋ 학습 계획 추가</button>
+        </div>
+        <div class="toolbar">
+          <div id="languages"></div>
+          <button id="addLang">＋ 언어 추가</button>
+        </div>
+        <div class="datebar">
+          <div>
+            <button id="prev" aria-label="이전 날짜">‹</button><input type="date" id="date" aria-label="날짜" /><button
+              id="next"
+              aria-label="다음 날짜"
+            >
+              ›</button
+            ><button id="today">오늘</button>
+          </div>
+        </div>
+        <section class="stats">
+          <article>
+            <label>오늘의 달성률</label><strong id="percent">0<span>%</span></strong>
+            <div class="track"><i id="totalbar"></i></div>
+            <small id="completeText"></small>
+          </article>
+          <article>
+            <label>학습 시간</label><strong id="minutes">0<span>분</span></strong
+            ><small>기록한 실제 학습 시간</small>
+          </article>
+          <article>
+            <label>완료한 학습</label><strong id="done">0<span>/ 8</span></strong
+            ><small>차근차근 목표를 채워보세요</small>
+          </article>
+          <article>
+            <label>연속 학습</label><strong id="streak">0<span>일</span></strong
+            ><small>학습을 기록하면 습관이 시작돼요</small>
+          </article>
         </section>
-        <section class="right">
-          <article class="panel">
+        <div class="columns">
+          <section>
+            <div id="warning"></div>
             <div class="section-title">
-              <h2>주간 학습 흐름</h2>
-              <span>최근 7일</span>
+              <div>
+                <h2 id="listTitle">오늘의 학습 체크리스트</h2>
+                <p>작은 성취를 하나씩 체크해보세요.</p>
+              </div>
+              <span id="taskCount"></span>
             </div>
-            <p class="sub">선택한 언어의 일별 목표 달성률</p>
-            <div class="chart" id="chart"></div>
-            <div class="legend">● 달성률 <span>100% = 당일 목표 완료</span></div>
-          </article>
-          <article class="panel schedule">
-            <div class="section-title">
-              <h2>학습 스케줄</h2>
-              <span id="scheduleDate"></span>
-            </div>
-            <div id="schedule"></div>
-          </article>
-          <article class="quote">
-            <span>THE DAILY NOTE</span>
-            <h3>“조금씩, 매일.<br />그것만으로 충분해요.”</h3>
-            <p>완벽한 하루보다 꾸준한 하루를 응원합니다.</p>
-            <div>✧ &nbsp; Your future self will thank you.</div>
-          </article>
+            <div id="tasks"></div>
+            <div class="empty" id="empty" hidden>아직 계획이 없어요. 학습 계획을 추가해보세요.</div>
+          </section>
+          <section class="right">
+            <article class="panel">
+              <div class="section-title">
+                <h2>주간 학습 흐름</h2>
+                <span>최근 7일</span>
+              </div>
+              <p class="sub">선택한 언어의 일별 목표 달성률</p>
+              <div class="chart" id="chart"></div>
+            </article>
+            <article class="panel schedule">
+              <div class="section-title">
+                <h2>학습 스케줄</h2>
+                <span id="scheduleDate"></span>
+              </div>
+              <div id="schedule"></div>
+            </article>
+          </section>
+        </div>
+        <section id="report" hidden class="panel">
+          <h2>영역별 누적 학습량</h2>
+          <div id="reportBody"></div>
         </section>
-      </div>
-      <section id="report" hidden class="panel">
-        <h2>영역별 누적 학습량</h2>
-        <div id="reportBody"></div>
-      </section>
-      <div class="bottom">
-        <span>기록은 현재 브라우저에 저장됩니다. 기기 간 동기화는 지원하지 않습니다.</span
-        ><button id="export">기록 백업 ↓</button
-        ><label class="import">백업 불러오기<input id="import" type="file" accept="application/json" hidden /></label>
+        <div class="bottom">
+          <span>체크리스트 기록은 이 기기의 브라우저에 저장됩니다.</span><button id="export">기록 백업 ↓</button
+          ><label class="import">백업 불러오기<input id="import" type="file" accept="application/json" hidden /></label>
+        </div>
       </div>
     </main>
+
     <dialog id="modal">
       <form id="form">
         <div class="section-title">
@@ -129,6 +183,8 @@
         <button class="primary" type="submit">저장하기</button>
       </form>
     </dialog>
+
+    <script src="family.js"></script>
     <script src="app.js"></script>
     <script src="homework.js"></script>
   </body>
