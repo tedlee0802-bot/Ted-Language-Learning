@@ -26,6 +26,10 @@ node_modules/
 /progress/
 /releases/
 /profile.json
+/profiles.json
+/users/
+/sessions/
+/auth/
 /seed-v1.json
 lingo-daily-*.json
 *.tar.gz
