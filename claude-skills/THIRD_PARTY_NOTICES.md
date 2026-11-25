@@ -1,9 +1,16 @@
 # Third-party notices
 
-일부 스킬은 아래 저장소의 스킬 구조·원칙을 참고해 MHSYS용으로 다시 작성했습니다.
+## affaan-m/ECC (Everything Claude Code) — https://github.com/affaan-m/ECC
 
-- affaan-m/ECC (Everything Claude Code) — https://github.com/affaan-m/ECC
-  - 참고: skills/customs-trade-compliance, competitive-platform-analysis, benchmark-methodology, competitive-report-structure, operator-approval-loop, email-ops
+**그대로 포함(수정 없음, 커밋 4adeee6 / 2026-11-19):**
+skills/council, skills/product-lens, skills/market-research, skills/short-video-distribution,
+skills/regex-vs-llm-structured-text, commands/plan-prd.md
+
+**구조·원칙을 참고해 다시 작성:**
+- mhsys-trade-compliance ← skills/customs-trade-compliance
+- led-vendor-benchmark ← skills/competitive-platform-analysis, benchmark-methodology, competitive-report-structure
+- mhsys-daily-briefing ← skills/operator-approval-loop, email-ops, agents/chief-of-staff
+- led-buyer-intelligence ← skills/lead-intelligence
 
 ```
 MIT License
