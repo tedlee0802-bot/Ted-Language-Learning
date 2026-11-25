@@ -1,0 +1,4 @@
+vendor,model,pixel_pitch_mm,package,environment,cabinet_w_mm,cabinet_h_mm,cabinet_qty,price_basis,price,currency,incoterm,freight,insurance,origin_costs,brightness_nits,refresh_hz,grayscale_bit,driver_ic,receiving_card,power_supply,spare_pct,warranty_years,lead_time_days,payment_terms,certifications,quote_date,quote_valid_until,notes
+SAMPLE-A,A-P1.5,1.5,COB,indoor,600,337.5,24,per_cabinet,980,USD,FOB,1200,,,600,3840,16,ICN2153,Novastar A8s,Meanwell,3,2,30,30% T/T + 70% before shipment,CE;FCC,2026-11-20,2026-12-20,예시 데이터
+SAMPLE-B,B-P1.5,1.5,SMD,indoor,600,337.5,24,per_sqm,4300,USD,CIF,,,,800,3840,14,MBI5264,Colorlight 5A,,2,2,25,100% T/T before shipment,CE,2026-11-21,2026-12-05,예시 데이터
+SAMPLE-C,C-P1.5,1.5,GOB,indoor,640,360,20,total,140000,CNY,EXW,9000,300,2500,700,,16,,Novastar A10s,G-energy,0,3,40,30/70,CE;RoHS,2026-11-22,,예시 데이터
