@@ -32,3 +32,6 @@ lingo-daily-*.json
 *.log
 .DS_Store
 Thumbs.db
+
+# Generated study-plan files (contain licensed Hailey sentences)
+/output/
