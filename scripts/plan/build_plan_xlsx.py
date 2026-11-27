@@ -18,7 +18,7 @@ from openpyxl.formatting.rule import FormulaRule
 WORDS, HAILEY, DDAN, MDIR, OUT = sys.argv[1:6]
 ANKI = sys.argv[6] if len(sys.argv) > 6 else None
 
-START = dt.date(2026, 11, 30)          # default start (Monday) - editable in the sheet
+START = dt.date(2026, 11, 27)          # default start (Day 1 = first lesson) - editable in the sheet
 DAYS = 365
 NEW_WORD_WEEKS = 50                    # 50 weeks x 200 words = 10,000
 WEEK_PATTERN = [29, 29, 29, 29, 28, 28, 28]   # = 200 per week
