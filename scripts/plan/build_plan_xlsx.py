@@ -1,10 +1,12 @@
 """Build the 1-year English study-plan workbook.
 
 Usage:
-  python build_plan_xlsx.py <words.json> <hailey.json> <meanings_dir> <out.xlsx> [anki_out.tsv]
+  python build_plan_xlsx.py <words.json> <hailey.json> <ddanddan.json> <meanings_dir> <out.xlsx> [anki_out.tsv]
 
 words.json  : output of build_wordlist.py (10,000 ranked words)
 hailey.json : {book title: [{n, src, en, ko}]} extracted from the learner's own Hailey PDFs (not in repo)
+ddanddan.json: {main: [{kind, num, expr, ko, examples, url}], optional: [...]} - DdanDdan English Shorts
+               (patterns/expressions with Anna's Korean glosses; examples OCR'd from thumbnails)
 """
 import csv, datetime as dt, glob, json, os, sys
 from openpyxl import Workbook
@@ -13,8 +15,8 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.formatting.rule import FormulaRule
 
-WORDS, HAILEY, MDIR, OUT = sys.argv[1:5]
-ANKI = sys.argv[5] if len(sys.argv) > 5 else None
+WORDS, HAILEY, DDAN, MDIR, OUT = sys.argv[1:6]
+ANKI = sys.argv[6] if len(sys.argv) > 6 else None
 
 START = dt.date(2026, 11, 30)          # default start (Monday) - editable in the sheet
 DAYS = 365
@@ -74,6 +76,17 @@ for seq, d in sent_day.items():
     day_sents[d] = (min(a, seq), max(b, seq))
 
 
+ddan = json.load(open(DDAN, encoding='utf-8'))
+DDAN_DAYS = 350
+day_ddan, ddan_day = {}, {}
+n_dd = len(ddan['main'])
+for d in range(1, DDAN_DAYS + 1):
+    a, b = n_dd * (d - 1) // DDAN_DAYS + 1, n_dd * d // DDAN_DAYS
+    day_ddan[d] = (a, b)
+    for i in range(a, b + 1):
+        ddan_day[i] = d
+
+
 def phase(d):
     if d <= 91:
         return 'Q1 기초 구어 (1~2,600)'
@@ -124,8 +137,8 @@ ws['A7'] = '진도 현황'; ws['A7'].font = FB
 stats = [
     ('외운 단어 (단어 시트 체크 O)', "=COUNTIF('단어 10000'!K:K,\"O\")", 10000),
     ('완료한 헤일리 문장 (체크 O)', "=COUNTIF('헤일리 1800'!H:H,\"O\")", 1800),
-    ('정리한 딴딴영어 Shorts', "=COUNTA('딴딴영어'!C3:C367)", 365),
-    ('일일 플랜 완료일 (단어 신규 O)', "=COUNTIF('일일 플랜'!M:M,\"O\")", 365),
+    ('완료한 딴딴영어 Shorts (체크 O)', "=COUNTIF('딴딴영어'!L:L,\"O\")", len(ddan['main'])),
+    ('일일 플랜 완료일 (단어 신규 O)', "=COUNTIF('일일 플랜'!O:O,\"O\")", 365),
 ]
 ws['A8'], ws['B8'], ws['C8'], ws['D8'] = '항목', '완료', '목표', '달성률'
 for c in 'ABCD':
@@ -141,7 +154,7 @@ routine = [
     ('② 오늘 새 단어', '30분', '단어 28~29개: 발음기호 보며 3번 소리 내기 → 예문 1번 쉐도잉 → 다 외우면 K열에 O'),
     ('③ 헤일리 복습', '5분', '어제 5문장: 한국어만 보고 영어로 말하기 (막히면 영상 0.75배속)'),
     ('④ 헤일리 새 문장', '10분', '오늘 5문장 × 4회 쉐도잉 (초급 0.5배 → 0.75배 → 정속)'),
-    ('⑤ 딴딴영어', '10분', '어제 Shorts 1개 복습 + 오늘 Shorts 1개: 핵심 구문·예문을 딴딴영어 시트에 기록'),
+    ('⑤ 딴딴영어', '10분', '어제 구문 3~4개를 한국어 뜻만 보고 말하기 → 오늘 Shorts 3~4편 시청 + 예문 3개 소리 내어 따라 하기'),
     ('⑥ 주간·월간 복습 (선택)', '5분', '일일 플랜의 D-7, D-30 범위를 빠르게 훑기 (인지만 확인)'),
 ]
 ws['A15'], ws['B15'], ws['C15'] = '단계', '시간', '방법'
@@ -157,6 +170,7 @@ legend = [
     '연두색 행: 복습 전용일 (신규 없음)',
     '단어 뜻: 1~1,000위(1~5주차)는 작성 완료. 6주차부터는 Anna가 매주 일요일에 다음 주 200개의 뜻·예문을 채웁니다.',
     '예문 출처: "헤일리 …" = 헤일리쌤 실제 미드 문장(한국어 해석 포함), "WordNet" = 사전 예문',
+    '딴딴영어: 채널 Shorts 1,177편 중 학습용 1,120편(패턴 798 + 생활 표현 322)을 Day 1~350에 배정. 예문은 썸네일 글자 인식(OCR)이라 오타가 있을 수 있어요.',
     '빈도 기준: 미국 드라마·영화 자막(OpenSubtitles) 50% + 종합 코퍼스(wordfreq) 50%, 원형(lemma) 기준',
 ]
 for i, t in enumerate(legend, 24):
@@ -176,9 +190,9 @@ ok_dv = lambda: DataValidation(type='list', formula1='"O,X,△"', allow_blank=Tr
 # ------------------------------------------------------------------ 2. 일일 플랜
 wp = wb.create_sheet('일일 플랜')
 cols = ['Day', '날짜', '요일', '주차', '단계', '새 단어 (순위)', '개수', '복습: 어제 단어', '복습 D-7 (선택)',
-        '복습 D-30 (선택)', '헤일리 새 문장 (책·번호)', '헤일리 복습 (어제)', '단어 신규 O', '단어 복습 O',
-        '헤일리 O', '딴딴 O', '메모']
-header(wp, 2, cols, [6, 11, 6, 6, 26, 15, 6, 15, 15, 15, 34, 34, 8, 8, 8, 8, 30])
+        '복습 D-30 (선택)', '헤일리 새 문장 (책·번호)', '헤일리 복습 (어제)', '딴딴 새 Shorts (순번)', '딴딴 복습 (어제)',
+        '단어 신규 O', '단어 복습 O', '헤일리 O', '딴딴 O', '메모']
+header(wp, 2, cols, [6, 11, 6, 6, 26, 15, 6, 15, 15, 15, 34, 34, 16, 16, 8, 8, 8, 8, 30])
 wp['A1'] = '일일 플랜 — 하루 할당량 (신규 + 전일 복습)'; wp['A1'].font = FT
 dv = ok_dv(); wp.add_data_validation(dv)
 for d in range(1, DAYS + 1):
@@ -210,15 +224,21 @@ for d in range(1, DAYS + 1):
         wp.cell(row=r, column=11, value='헤일리 총복습 (책별 한국어→영어 말하기)')
     if d - 1 in day_sents:
         wp.cell(row=r, column=12, value=hailey_label(*day_sents[d - 1]))
+    if d in day_ddan:
+        wp.cell(row=r, column=13, value=rng(*day_ddan[d]))
+    else:
+        wp.cell(row=r, column=13, value='딴딴 총복습')
+    if d - 1 in day_ddan:
+        wp.cell(row=r, column=14, value=rng(*day_ddan[d - 1]))
     for c in range(1, len(cols) + 1):
         cell = wp.cell(row=r, column=c)
         cell.font, cell.border = F, BOX
-        cell.alignment = CENTER if c in (1, 2, 3, 4, 7, 13, 14, 15, 16) else Alignment(vertical='center', wrap_text=True)
-        if c >= 13:
+        cell.alignment = CENTER if c in (1, 2, 3, 4, 7, 15, 16, 17, 18) else Alignment(vertical='center', wrap_text=True)
+        if c >= 15:
             cell.fill = INPUT
         elif d not in day_words:
             cell.fill = REV
-    dv.add(f'M{r}:P{r}')
+    dv.add(f'O{r}:R{r}')
 
 # ------------------------------------------------------------------ 3. 단어 10000
 wv = wb.create_sheet('단어 10000')
@@ -256,28 +276,26 @@ dv.add(f'H3:H{len(sentences) + 2}')
 
 # ------------------------------------------------------------------ 5. 딴딴영어
 wd = wb.create_sheet('딴딴영어')
-cols = ['Day', '날짜', 'Shorts URL', '핵심 구문', '예문 1', '예문 2', '한국어 해석', '복습: 어제 구문', '완료 O']
-header(wd, 2, cols, [6, 11, 34, 28, 40, 40, 36, 28, 8])
-wd['A1'] = '딴딴영어 Shorts — 하루 1편 (핵심 구문 1 + 예문 2) · 연한 노랑 칸에 기록'; wd['A1'].font = FT
+cols = ['순번', 'Day', '날짜', '유형', '패턴 번호', '핵심 구문', '한국어 뜻', '예문 1', '예문 2', '예문 3', 'Shorts 링크', '완료 O', '메모']
+header(wd, 2, cols, [7, 6, 11, 7, 8, 34, 30, 38, 38, 38, 36, 8, 24])
+wd['A1'] = '딴딴영어 Shorts — 패턴 798 + 생활 표현 322 = 1,120편 (하루 3~4편, Day 1~350)'; wd['A1'].font = FT
 dv = ok_dv(); wd.add_data_validation(dv)
-for d in range(1, DAYS + 1):
-    r = d + 2
-    wd.cell(row=r, column=1, value=d)
-    wd.cell(row=r, column=2, value=f'={START_REF}+A{r}-1').number_format = 'yyyy-mm-dd'
-    if d > 1:
-        wd.cell(row=r, column=8, value=f'=IF(D{r - 1}="","",D{r - 1})')
-    for c in range(1, 10):
-        cell = wd.cell(row=r, column=c)
-        cell.font, cell.border = F, BOX
-        if c in (3, 4, 5, 6, 7, 9):
+rows_dd = [(i, it) for i, it in enumerate(ddan['main'], 1)] + [(None, it) for it in ddan['optional']]
+for r, (seq, it) in enumerate(rows_dd, 3):
+    ex = (it['examples'] + ['', '', ''])[:3]
+    vals = [seq, ddan_day.get(seq) if seq else None, f'={START_REF}+B{r}-1' if seq else None, it['kind'],
+            it['num'], it['expr'], it['ko'], ex[0], ex[1], ex[2], it['url'], None, None]
+    for c, v in enumerate(vals, 1):
+        cell = wd.cell(row=r, column=c, value=v)
+        cell.font = FB if c == 6 else F
+        if c in (12, 13):
             cell.fill = INPUT
-    dv.add(f'I{r}')
-wd['K2'] = '작성 예시 (형식 참고용 — 실제 영상 내용 아님)'; wd['K2'].font = FB
-ex = ['https://youtube.com/shorts/…', "I'm swamped.", "I'm swamped with work this week.",
-      "Sorry, I'm swamped right now. Can I call you back?", '나 일이 너무 많아(정신없어).']
-for i, v in enumerate(ex, 3):
-    wd.cell(row=i, column=11, value=v).font = Font(name=FONT, size=10, italic=True, color='7F7F7F')
-wd.column_dimensions['K'].width = 50
+        if seq is None:
+            cell.fill = REV
+    wd.cell(row=r, column=3).number_format = 'yyyy-mm-dd'
+    wd.cell(row=r, column=11).hyperlink = it['url']
+dv.add(f'L3:L{len(rows_dd) + 2}')
+
 
 # ------------------------------------------------------------------ 6. 마일스톤
 wm = wb.create_sheet('마일스톤')
